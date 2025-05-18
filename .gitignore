@@ -180,6 +180,10 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# dev env
+.vscode/
+
+# for project
 data/
 .env
-.vscode/
+*.session
