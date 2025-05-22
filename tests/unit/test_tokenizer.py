@@ -1,6 +1,5 @@
 import pytest
-import os
-from llm.tokenizer import get_tokenizer
+from llm.tokenizer import LocalTokenizer, VertexTokenizer, GeminiAPITokenizer
 from config import GOOGLE_API_KEY
 
 TEST_TEXTS = [
@@ -13,17 +12,17 @@ TEST_TEXTS = [
 
 @pytest.mark.parametrize("text", TEST_TEXTS)
 def test_tokenizers(text):
-    local = get_tokenizer("local")
+    local = LocalTokenizer()
     print(f"LocalTokenizer: {local.count_tokens(text)} tokens")
     try:
-        vertex = get_tokenizer("vertex", model_name="gemini-1.5-flash-001")
+        vertex = VertexTokenizer(model_name="gemini-1.5-flash-001")
         print(f"VertexTokenizer: {vertex.count_tokens(text)} tokens")
     except Exception as e:
         print(f"VertexTokenizer error: {e}")
     try:
         api_key = GOOGLE_API_KEY
         if api_key:
-            gemini = get_tokenizer("gemini", api_key=api_key)
+            gemini = GeminiAPITokenizer(api_key=api_key, model_name="gemini-2.0-flash")
             print(f"GeminiAPITokenizer: {gemini.count_tokens(text)} tokens")
     except Exception as e:
         print(f"GeminiAPITokenizer error: {e}")
