@@ -1,5 +1,5 @@
 import argparse
-#from telegram.fetch_messages import fetch_messages
+from telegram.fetch_messages import fetch_new_messages
 from telegram.get_chat_list import get_chat_list
 # from digest.gemini_digest import generate_digest  # To be implemented
 
@@ -20,8 +20,7 @@ def main():
 
     if args.command == "fetch":
         # Call the function to fetch Telegram messages
-        #fetch_messages()
-        print("Message fetching is not yet implemented.")
+        fetch_new_messages()
 
     elif args.command == "chat-list":
         # Call the function to list Telegram chats
