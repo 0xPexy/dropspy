@@ -1,5 +1,5 @@
 # tests/unit/test_batch_writer.py
-from llm.batch_writer import FileBatchWriter
+from llm.batch_writer import BatchWriter
 from datetime import datetime, timedelta
 
 
@@ -16,7 +16,7 @@ def sample_batches():
 
 
 def test_filebatchwriter_creates_files(tmp_path):
-    writer = FileBatchWriter(output_dir=str(tmp_path))
+    writer = BatchWriter(output_dir=str(tmp_path))
     batches = sample_batches()
     files = writer.write_batches(batches)
     assert len(files) == len(batches)
@@ -31,7 +31,7 @@ def test_filebatchwriter_creates_files(tmp_path):
 
 
 def test_empty_batch_file(tmp_path):
-    writer = FileBatchWriter(output_dir=str(tmp_path))
+    writer = BatchWriter(output_dir=str(tmp_path))
     batches = [[]]
     files = writer.write_batches(batches)
     assert len(files) == 1
@@ -48,7 +48,7 @@ def complex_batches(num_batches=10, msgs_per_batch=3):
         for j in range(msgs_per_batch):
             t = base_time + timedelta(minutes=(i * msgs_per_batch + j) * 10)
             msg = {
-                "channel": chr(65 + (i % 3)),  
+                "channel": chr(65 + (i % 3)),
                 "time": t.strftime("%Y%m%d_%H%M"),
                 "text": f"메시지 {i*msgs_per_batch + j + 1} (배치 {i+1})",
             }
@@ -58,7 +58,7 @@ def complex_batches(num_batches=10, msgs_per_batch=3):
 
 
 def test_filebatchwriter_multiple_batches(tmp_path):
-    writer = FileBatchWriter(output_dir=str(tmp_path))
+    writer = BatchWriter(output_dir=str(tmp_path))
     batches = complex_batches(num_batches=10, msgs_per_batch=3)
     files = writer.write_batches(batches)
     assert len(files) == 10

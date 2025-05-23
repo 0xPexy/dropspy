@@ -3,18 +3,20 @@
 import os
 from typing import List, Dict
 
-class FileBatchWriter:
+class BatchWriter:
     def __init__(self, output_dir: str):
         self.output_dir = output_dir
         os.makedirs(output_dir, exist_ok=True)
 
-    def make_batch_filename(self, messages: List[Dict], batch_idx: int, total_batches: int) -> str:
+    def make_batch_filename(
+        self, messages: List[Dict], batch_idx: int, total_batches: int
+    ) -> str:
         if not messages:
             return f"empty-batch_{batch_idx+1}of{total_batches}.md"
         t_format = "%Y%m%d_%H%M"
         try:
-            start = messages[0]['time']
-            end = messages[-1]['time']
+            start = messages[0]["time"]
+            end = messages[-1]["time"]
         except (KeyError, IndexError):
             start = end = "unknown"
         return f"{start.replace(':','')}-{end.replace(':','')}-batch_{batch_idx+1}of{total_batches}.md"
