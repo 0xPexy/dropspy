@@ -33,13 +33,13 @@ FINAL_ANALYSIS_MODEL_NAME = os.getenv(
 
 # --- File Paths and Directories ---
 DATA_DIRECTORY_ROOT = os.getenv("DATA_DIRECTORY_ROOT", "data")
-FIRST_PASS_PROMPT_FILE_PATH = os.getenv(
-    "FIRST_PASS_PROMPT_FILE_PATH", "prompts/1st_pass_filter_prompt.md"
-)
+# FIRST_PASS_PROMPT_FILE_PATH = os.getenv(
+#     "FIRST_PASS_PROMPT_FILE_PATH", "prompts/1st_pass_filter_prompt.md"
+# )
 
-# Optional: Paths for other prompt files
-SECOND_PASS_PROMPT_FILE_PATH = os.getenv("SECOND_PASS_PROMPT_FILE_PATH")
-FINAL_ANALYSIS_PROMPT_FILE_PATH = os.getenv("FINAL_ANALYSIS_PROMPT_FILE_PATH")
+# # Optional: Paths for other prompt files
+# SECOND_PASS_PROMPT_FILE_PATH = os.getenv("SECOND_PASS_PROMPT_FILE_PATH")
+# FINAL_ANALYSIS_PROMPT_FILE_PATH = os.getenv("FINAL_ANALYSIS_PROMPT_FILE_PATH")
 
 # Internal constants for subdirectories and filenames derived from DATA_DIRECTORY_ROOT
 _CHAT_BATCHES_SUBDIR_NAME = "chat_batches"

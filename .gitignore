@@ -186,4 +186,5 @@ cython_debug/
 # for project
 data/
 .env
+.env.test
 *.session
