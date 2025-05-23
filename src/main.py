@@ -1,37 +1,47 @@
 import argparse
-from telegram.fetch_messages import fetch_new_messages
-from telegram.get_chat_list import get_chat_list
-# from digest.gemini_digest import generate_digest  # To be implemented
+from typing import List, Dict, Any
+from telegram.chat_info_fetcher import ChatInfoFetcher
+from config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_SESSION_NAME
+
 
 def main():
     parser = argparse.ArgumentParser(description="DropSpy CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
+    # Subcommand: chats
+    subparsers.add_parser("chats", help="List currently joined Telegram chats")
+
     # Subcommand: fetch
     subparsers.add_parser("fetch", help="Fetch recent Telegram messages")
 
-    # Subcommand: chat-list
-    subparsers.add_parser("chat-list", help="List currently joined Telegram chats")
-
-    # Subcommand: digest
-    subparsers.add_parser("digest", help="Generate AI-based digest from collected messages")
-
     args = parser.parse_args()
 
-    if args.command == "fetch":
-        # Call the function to fetch Telegram messages
-        fetch_new_messages()
-
-    elif args.command == "chat-list":
+    if args.command == "chats":
         # Call the function to list Telegram chats
-        get_chat_list()
+        fetcher = ChatInfoFetcher(
+            TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_SESSION_NAME
+        )
+        chat_list = fetcher.get_chats_info()
+        print_chats(chat_list)
 
-    elif args.command == "digest":
-        # Call the function to generate digest (to be implemented)
-        print("Digest generation is not yet implemented.")
+    elif args.command == "fetch":
+        # Call the function to fetch Telegram messages
+        print("Fetch function is not yet implemented.")
 
     else:
         parser.print_help()
+
+
+def print_chats(chats: List[Dict[str, Any]]):
+    print("-" * 40)
+    print("✉️ Participating Telegram Chats:")
+    print("-" * 40)
+    for chat in chats:
+        print(f"🆔 ID: {chat['id']}")
+        print(f"📛 Title: {chat['title']}")
+        print(f"🔗 Handle: {chat['handle']}")
+        print("-" * 40)
+
 
 if __name__ == "__main__":
     main()

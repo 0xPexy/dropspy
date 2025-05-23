@@ -44,9 +44,7 @@ class ChatInfoFetcher:
             self.fetch_participating_chats_info()
         return self.id_to_handle.get(chat_id)
 
-    def print_chats(self):
-        for chat in self.chats:
-            print(f"🆔 ID: {chat['id']}")
-            print(f"📛 Title: {chat['title']}")
-            print(f"🔗 Handle: {chat['handle']}")
-            print("-" * 40)
+    def get_chats_info(self) -> List[Dict]:
+        if not self.chats:
+            self.fetch_participating_chats_info()
+        return self.chats
