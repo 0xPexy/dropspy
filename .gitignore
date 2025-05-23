@@ -182,6 +182,7 @@ cython_debug/
 
 # dev env
 .vscode/
+.DS_Store
 
 # for project
 data/
