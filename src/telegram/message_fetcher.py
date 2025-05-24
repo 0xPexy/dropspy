@@ -9,6 +9,7 @@ from telethon.tl.functions.messages import GetHistoryRequest
 
 KST = timezone(timedelta(hours=9))
 
+
 class MessageFetcher:
     def __init__(
         self,
@@ -32,11 +33,14 @@ class MessageFetcher:
                 with open(self.last_fetch_path, "r") as f:
                     return json.load(f)
             except json.JSONDecodeError:
-                print(f"Warning: Invalid JSON in last fetch file: {self.last_fetch_path}. Ignoring and starting fresh.")
+                print(
+                    f"Warning: Invalid JSON in last fetch file: {self.last_fetch_path}. Ignoring and starting fresh."
+                )
                 return {}
         return {}
 
     def _save_last_fetch_times(self, last_fetch_times: Dict[str, Dict[str, str]]):
+        os.makedirs(os.path.dirname(self.last_fetch_path), exist_ok=True)
         with open(self.last_fetch_path, "w") as f:
             json.dump(last_fetch_times, f, ensure_ascii=False, indent=2)
 
@@ -49,7 +53,9 @@ class MessageFetcher:
             if not client.is_connected():
                 client.connect()
             if not client.is_user_authorized():
-                print("User is not authorized. Please run an interactive session first to log in.")
+                print(
+                    "User is not authorized. Please run an interactive session first to log in."
+                )
                 return
 
             for chat in self.target_chats:
@@ -60,11 +66,17 @@ class MessageFetcher:
 
                 last_info = last_fetch_times.get(chat_id, {})
                 if last_info and "last_fetch" in last_info:
-                    since = datetime.fromisoformat(last_info["last_fetch"]).astimezone(KST)
-                    print(f"↪️ Resuming fetch since: {since.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+                    since = datetime.fromisoformat(last_info["last_fetch"]).astimezone(
+                        KST
+                    )
+                    print(
+                        f"↪️ Resuming fetch since: {since.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+                    )
                 else:
                     since = datetime.now(KST) - timedelta(days=self.default_fetch_days)
-                    print(f"🆕 No previous record for '{chat}'. Fetching last {self.default_fetch_days} days (since {since.strftime('%Y-%m-%d %H:%M:%S %Z')}).")
+                    print(
+                        f"🆕 No previous record for '{chat}'. Fetching last {self.default_fetch_days} days (since {since.strftime('%Y-%m-%d %H:%M:%S %Z')})."
+                    )
 
                 messages = []
                 offset_id = 0
@@ -109,20 +121,21 @@ class MessageFetcher:
                     all_messages.extend(messages)
                     new_last_fetch[chat_id] = {
                         "handle": chat_handle,
-                        "last_fetch": messages[-1]["time"]
+                        "last_fetch": messages[-1]["time"],
                     }
                 elif chat_id in last_fetch_times:
                     # preserve previous info if no new messages
                     prev = last_fetch_times[chat_id]
                     new_last_fetch[chat_id] = {
                         "handle": prev.get("handle", chat_handle),
-                        "last_fetch": prev.get("last_fetch", "")
+                        "last_fetch": prev.get("last_fetch", ""),
                     }
-                else:
-                    new_last_fetch[chat_id] = {
-                        "handle": chat_handle,
-                        "last_fetch": ""
-                    }
+                # TODO: remove below after check
+                # else:
+                #     new_last_fetch[chat_id] = {
+                #         "handle": chat_handle,
+                #         "last_fetch": ""
+                #     }
 
         all_messages.sort(key=lambda m: m["time"])
         self._save_last_fetch_times(new_last_fetch)
