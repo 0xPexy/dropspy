@@ -2,7 +2,9 @@ from typing import List, Dict, Any
 from llm.tokenizer import Tokenizer
 
 class BatchSplitter:
-    def __init__(self, tokenizer: Tokenizer, max_tokens_per_batch: int, base_prompt_tokens: int):
+    def __init__(
+        self, tokenizer: Tokenizer, max_tokens_per_batch: int, base_prompt_tokens: int
+    ):
         self.tokenizer = tokenizer
         self.max_tokens_per_batch = max_tokens_per_batch
         self.base_prompt_tokens = base_prompt_tokens
@@ -18,6 +20,9 @@ class BatchSplitter:
             msg_tokens = self.tokenizer.count_tokens(formatted)
 
             if msg_tokens > token_limit:
+                print(
+                    f"Message too long: {msg_tokens} tokens, max is {token_limit}, skipping..."
+                )
                 # Skip messages that are too big
                 continue
 
