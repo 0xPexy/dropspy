@@ -43,8 +43,8 @@ DATA_DIRECTORY_ROOT = os.getenv("DATA_DIRECTORY_ROOT", "data")
 
 # Internal constants for subdirectories and filenames derived from DATA_DIRECTORY_ROOT
 _CHAT_MESSAGES_SUBDIR_NAME = "chat_messages"
-_CHAT_BATCHES_SUBDIR_NAME = "chat_batches"
 _CHAT_PREBATCHES_SUBDIR_NAME = "chat_prebatches"
+_CHAT_BATCHES_SUBDIR_NAME = "chat_batches"
 _FETCH_RECORD_FILENAME_ONLY = "last_fetch.json"
 _LOG_SUBDIR_NAME = "logs"  # Example for logs, if you add logging
 
@@ -54,9 +54,9 @@ def get_data_path(filename_or_subdir: str) -> str:
     return os.path.join(DATA_DIRECTORY_ROOT, filename_or_subdir)
 
 PATH_CHAT_MESSAGES_DIR = get_data_path(_CHAT_MESSAGES_SUBDIR_NAME)
+PATH_CHAT_PREBATCHES_DIR = get_data_path(_CHAT_PREBATCHES_SUBDIR_NAME)
 PATH_CHAT_BATCHES_DIR = get_data_path(_CHAT_BATCHES_SUBDIR_NAME)
 PATH_FETCH_RECORD_FILE = get_data_path(_FETCH_RECORD_FILENAME_ONLY)
-PATH_PREBATCHES_DIR = get_data_path(_CHAT_PREBATCHES_SUBDIR_NAME)
 PATH_LOG_DIR = get_data_path(_LOG_SUBDIR_NAME)  # Example for logs
 
 # --- Logging Configuration ---

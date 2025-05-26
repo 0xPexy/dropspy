@@ -1,6 +1,7 @@
 import argparse
 import os
 import shutil
+import glob
 from typing import List, Dict, Any
 from telegram.chat_info_fetcher import ChatInfoFetcher
 from config import (
@@ -12,9 +13,11 @@ from config import (
     TELEGRAM_TARGET_CHATS,
     PATH_FETCH_RECORD_FILE,
     PATH_CHAT_MESSAGES_DIR,
+    PATH_CHAT_PREBATCHES_DIR,
 )
 from telegram.message_fetcher import MessageFetcher
 from telegram.message_store import MessageStore
+from pipeline.prebatch import prebatch
 
 
 def main():
@@ -39,6 +42,16 @@ def main():
     # Subcommand: fetch
     subparsers.add_parser("fetch", help="Fetch recent Telegram messages")
 
+    prebatch_parser = subparsers.add_parser(
+        "prebatch", help="Deduplicate and mark dup_count for a batch message file"
+    )
+    prebatch_parser.add_argument(
+        "action", nargs="?", choices=["list"], help="Action to perform (list)"
+    )
+    prebatch_parser.add_argument(
+        "--batch-index", type=int, default=0, help="Message file index to preprocess"
+    )
+
     # Subcommand: batch
     batch_parser = subparsers.add_parser(
         "batch", help="Batch process saved message files"
@@ -60,6 +73,16 @@ def main():
     elif args.command == "fetch":
         # Call the function to fetch Telegram messages
         fetch_command(message_fetcher=message_fetcher, message_store=message_store)
+
+    elif args.command == "prebatch":
+        if args.action == "list":
+            message_store.print_file_list()
+        else:
+            prebatch_command(
+                input_dir=PATH_CHAT_MESSAGES_DIR,
+                output_dir=PATH_CHAT_PREBATCHES_DIR,
+                batch_index=args.batch_index,
+            )
 
     elif args.command == "batch":
         if args.action == "list":
@@ -100,6 +123,20 @@ def fetch_command(message_fetcher: MessageFetcher, message_store: MessageStore):
     # TODO: add more specific exceptions
     except Exception as e:
         print(f"An error occurred: {e}")
+
+
+def prebatch_command(input_dir: str, output_dir: str, batch_index: int = None):
+    message_files = sorted(glob.glob(f"{input_dir}/*.json"))
+    if not message_files:
+        print(f"No message files found in {input_dir}")
+        return
+    if batch_index is None or batch_index < 0 or batch_index >= len(message_files):
+        batch_index = 0
+    target_file = message_files[batch_index]
+    print(f"Pre-batching file: {target_file}")
+
+    out_path = prebatch(target_file, output_dir)
+    print(f"Pre-batched file saved to {out_path}")
 
 
 def reset_data():

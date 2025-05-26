@@ -1,4 +1,5 @@
 import json
+import os
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -20,9 +21,9 @@ def prebatch(input_file: str, output_dir: str):
             msg_out["dup_count"] = text_counts[msg["text"]]
             unique_messages.append(msg_out)
             seen.add(msg["text"])
-
     # Output file name
-    out_path = Path(output_dir) / input_file
+    out_path = Path(output_dir) / Path(input_file).name
+    os.makedirs(out_path.parent, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(unique_messages, f, ensure_ascii=False, indent=2)
     return out_path
