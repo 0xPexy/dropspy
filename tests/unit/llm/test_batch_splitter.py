@@ -1,5 +1,5 @@
 import pytest
-from llm.batch_splitter import BatchSplitter
+from pipeline.batch import BatchSplitter
 
 
 class DummyTokenizer:

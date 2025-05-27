@@ -1,5 +1,5 @@
 # tests/unit/test_batch_writer.py
-from llm.batch_writer import BatchWriter
+from pipeline.batch import BatchWriter
 from datetime import datetime, timedelta
 
 

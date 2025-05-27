@@ -1,7 +1,7 @@
 import pytest
 from llm.tokenizer import VertexTokenizer
-from llm.batch_splitter import BatchSplitter
-from llm.batch_writer import BatchWriter
+from pipeline.batch import BatchSplitter
+from pipeline.batch import BatchWriter
 from datetime import datetime, timedelta
 
 
