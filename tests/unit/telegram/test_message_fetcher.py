@@ -18,7 +18,12 @@ class DummyClient:
 
     def get_entity(self, chat):
         # Differentiate channel by chat name/id
-        return type("Entity", (), {"id": chat})()
+        entity = type(
+            "Entity",
+            (),
+            {"id": str(hash(chat)), "username": chat if chat.startswith("@") else None},
+        )()
+        return entity
 
     def __call__(self, req):
         now = datetime(2025, 5, 20, 12, 0, tzinfo=KST)
@@ -27,24 +32,24 @@ class DummyClient:
         for i in range(3):
             msg = type("Msg", (), {})()
             msg.date = now - timedelta(days=i)
-            msg.message = f"{req.peer.id} message {i}"
+            msg.message = f"{req.peer.username} message {i}"
             msgs.append(msg)
         # 1 duplicate (just append same message with same content/date)
         dup_msg = type("Msg", (), {})()
         dup_msg.date = now - timedelta(days=1)
-        dup_msg.message = f"{req.peer.id} message 1"
+        dup_msg.message = f"{req.peer.username} message 1"
         msgs.append(dup_msg)
         # 2 out-of-range messages
         for i in range(2):
             msg = type("Msg", (), {})()
             msg.date = now - timedelta(days=10 + i)
-            msg.message = f"{req.peer.id} old message {i}"
+            msg.message = f"{req.peer.username} old message {i}"
             msgs.append(msg)
         return type("History", (), {"messages": msgs})()
-    
+
     def is_connected(self):
         return True
-    
+
     def is_user_authorized(self):
         return True
 
@@ -57,9 +62,10 @@ def mock_fetcher(monkeypatch):
         def _load_last_fetch_times(self):
             # Only the first channel has last_fetch (3 days ago), second is empty
             return {
-                str(hash("@chan1")): (
-                    datetime(2025, 5, 17, 0, 0, tzinfo=KST).isoformat()
-                )
+                str(hash("@chan1")): {
+                    "handle": "@chan1",
+                    "last_fetch": datetime(2025, 5, 17, 0, 0, tzinfo=KST).isoformat(),
+                }
             }
 
         def _save_last_fetch_times(self, last_fetch_times):
@@ -76,8 +82,8 @@ def mock_fetcher(monkeypatch):
 
 
 def test_message_fetcher_logic(mock_fetcher):
-    msgs = mock_fetcher.fetch()
-
+    now = datetime(2025, 5, 20, 12, 0, tzinfo=KST)
+    msgs = mock_fetcher.fetch(now=now)
     # Each channel should have 6 messages in range (3 in range, 1 duplicate, plus channel offset)
     assert len(msgs) == 8
     # Check chronological order

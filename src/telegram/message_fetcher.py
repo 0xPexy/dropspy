@@ -3,7 +3,7 @@
 import os
 import json
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict
+from typing import List, Dict, Optional
 from telethon.sync import TelegramClient
 from telethon.tl.functions.messages import GetHistoryRequest
 
@@ -44,10 +44,13 @@ class MessageFetcher:
         with open(self.last_fetch_path, "w") as f:
             json.dump(last_fetch_times, f, ensure_ascii=False, indent=2)
 
-    def fetch(self) -> List[Dict]:
+    def fetch(self, now: Optional[datetime] = None) -> List[Dict]:
         last_fetch_times = self._load_last_fetch_times()
         all_messages = []
         new_last_fetch = {}
+
+        if now is None:
+            now = datetime.now(KST)
 
         with TelegramClient(self.session_name, self.api_id, self.api_hash) as client:
             if not client.is_connected():
@@ -73,7 +76,7 @@ class MessageFetcher:
                         f"↪️ Resuming fetch since: {since.strftime('%Y-%m-%d %H:%M:%S %Z')}"
                     )
                 else:
-                    since = datetime.now(KST) - timedelta(days=self.default_fetch_days)
+                    since = now - timedelta(days=self.default_fetch_days)
                     print(
                         f"🆕 No previous record for '{chat}'. Fetching last {self.default_fetch_days} days (since {since.strftime('%Y-%m-%d %H:%M:%S %Z')})."
                     )
@@ -124,18 +127,11 @@ class MessageFetcher:
                         "last_fetch": messages[-1]["time"],
                     }
                 elif chat_id in last_fetch_times:
-                    # preserve previous info if no new messages
                     prev = last_fetch_times[chat_id]
                     new_last_fetch[chat_id] = {
                         "handle": prev.get("handle", chat_handle),
                         "last_fetch": prev.get("last_fetch", ""),
                     }
-                # TODO: remove below after check
-                # else:
-                #     new_last_fetch[chat_id] = {
-                #         "handle": chat_handle,
-                #         "last_fetch": ""
-                #     }
 
         all_messages.sort(key=lambda m: m["time"])
         self._save_last_fetch_times(new_last_fetch)
