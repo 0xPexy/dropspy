@@ -9,20 +9,25 @@ TEST_TEXTS = [
     "1. Visit https://dropspy.com\n2. Follow @DropSpy\n3. Claim now!\n\n🔥 Hurry up!",
 ]
 
+expected_local_tokens = [33, 53, 54, 38]
+expected_vertex_tokens = [15, 39, 34, 27]
 
-@pytest.mark.parametrize("text", TEST_TEXTS)
-def test_tokenizers(text):
+
+@pytest.mark.parametrize(
+    "text, expected_local, expected_vertex",
+    zip(TEST_TEXTS, expected_local_tokens, expected_vertex_tokens),
+)
+def test_tokenizers(text, expected_local, expected_vertex):
     local = LocalTokenizer()
-    print(f"LocalTokenizer: {local.count_tokens(text)} tokens")
+    local_tokens = local.count_tokens(text)
+    print(f"LocalTokenizer: {local_tokens} tokens")
+    assert local_tokens == expected_local
     try:
         vertex = VertexTokenizer(model_name="gemini-1.5-flash-001")
-        print(f"VertexTokenizer: {vertex.count_tokens(text)} tokens")
+        vertex_tokens = vertex.count_tokens(text)
+        print(f"VertexTokenizer: {vertex_tokens} tokens")
+        assert vertex_tokens == expected_vertex
+    except AssertionError as e:
+        raise AssertionError(f"VertexTokenizer tokens mismatch: {e}")
     except Exception as e:
         print(f"VertexTokenizer error: {e}")
-    try:
-        api_key = GOOGLE_API_KEY
-        if api_key:
-            gemini = GeminiAPITokenizer(api_key=api_key, model_name="gemini-2.0-flash")
-            print(f"GeminiAPITokenizer: {gemini.count_tokens(text)} tokens")
-    except Exception as e:
-        print(f"GeminiAPITokenizer error: {e}")
