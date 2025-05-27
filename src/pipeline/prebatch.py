@@ -39,7 +39,7 @@ class Prebatcher:
 
 class PrebatchPipeline:
     def __init__(self, output_dir: str):
-        self.output_dir = output_dir
+        self.prebatchStore = PrebatchStore(output_dir=output_dir)
         self.prebatcher = Prebatcher()
 
     def run(self, input_filename: str, fetched_messages: Dict) -> str:
@@ -47,8 +47,7 @@ class PrebatchPipeline:
             unique_messages = self.prebatcher.prebatch(
                 fetched_messages=fetched_messages
             )
-            store = PrebatchStore(self.output_dir)
-            out_path = store.store(input_filename, unique_messages)
+            out_path = self.prebatchStore.store(input_filename, unique_messages)
             return out_path
         except Exception as e:
             raise RuntimeError(f"Error in prebatch pipeline: {e}")
