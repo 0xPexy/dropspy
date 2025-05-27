@@ -1,5 +1,6 @@
 import os
 import json
+from typing import Dict
 
 
 class JSONFileStore:
@@ -17,11 +18,13 @@ class JSONFileStore:
         for idx, fname in enumerate(files):
             print(f"{idx}: {fname}")
 
-    def get_file_by_index(self, idx):
+    def get_file_by_index(self, idx: int) -> Dict[str, Dict]:
         files = self.list_files()
         if idx < 0 or idx >= len(files):
             raise IndexError("Invalid file index")
-        return files[idx]
+        filename = files[idx]
+        content = self.load(filename)
+        return {"filename": filename, "content": content}
 
     def save(self, filename: str, data: dict) -> str:
         path = os.path.join(self.data_dir, filename)
@@ -37,7 +40,8 @@ class JSONFileStore:
         try:
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
+        except json.JSONDecodeError:
+            return {}
         except FileNotFoundError:
             raise FileNotFoundError(f"File not found: {path}")
-        except json.JSONDecodeError:
-            raise RuntimeError(f"Failed to decode JSON from file: {path}")
+        

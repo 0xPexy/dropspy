@@ -17,10 +17,12 @@ from config import (
 )
 from telegram.message_fetcher import MessageFetcher
 from telegram.message_store import MessageStore
-from pipeline.prebatch import prebatch
+from pipeline.prebatch import PrebatchPipeline
 
 
-def main():
+def initialize_modules() -> (
+    tuple[ChatInfoFetcher, MessageFetcher, MessageStore, PrebatchPipeline]
+):
     chat_info_fetcher = ChatInfoFetcher(
         TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_SESSION_NAME
     )
@@ -33,6 +35,11 @@ def main():
         default_fetch_days=TELEGRAM_DEFAULT_FETCH_DAYS,
     )
     message_store = MessageStore(PATH_CHAT_MESSAGES_DIR)
+    prebatch_pipeline = PrebatchPipeline(PATH_CHAT_PREBATCHES_DIR)
+    return chat_info_fetcher, message_fetcher, message_store, prebatch_pipeline
+
+
+def setup_cli():
     parser = argparse.ArgumentParser(description="DropSpy CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -65,23 +72,31 @@ def main():
         "reset", help="Delete all app data in DATA_DIRECTORY_ROOT (dangerous!)"
     )
 
-    args = parser.parse_args()
+    return parser
 
+
+def execute_command(
+    args: argparse.Namespace,
+    chat_info_fetcher: ChatInfoFetcher,
+    message_fetcher: MessageFetcher,
+    message_store: MessageStore,
+    prebatch_pipeline: PrebatchPipeline,
+):
     if args.command == "chats":
         chats_command(chat_info_fetcher)
 
     elif args.command == "fetch":
-        # Call the function to fetch Telegram messages
         fetch_command(message_fetcher=message_fetcher, message_store=message_store)
 
     elif args.command == "prebatch":
         if args.action == "list":
             message_store.print_file_list()
         else:
+            messages = message_store.get_file_by_index(args.batch_index)
             prebatch_command(
-                input_dir=PATH_CHAT_MESSAGES_DIR,
-                output_dir=PATH_CHAT_PREBATCHES_DIR,
-                batch_index=args.batch_index,
+                prebatch_pipeline=prebatch_pipeline,
+                input_filename=messages["filename"],
+                fetched_messages=messages["content"],
             )
 
     elif args.command == "batch":
@@ -94,7 +109,18 @@ def main():
         reset_data()
 
     else:
-        parser.print_help()
+        args.parser.print_help()
+
+
+def main():
+    chat_info_fetcher, message_fetcher, message_store, prebatch_pipeline = (
+        initialize_modules()
+    )
+    parser = setup_cli()
+    args = parser.parse_args()
+    execute_command(
+        args, chat_info_fetcher, message_fetcher, message_store, prebatch_pipeline
+    )
 
 
 def chats_command(chat_info_fetcher: ChatInfoFetcher):
@@ -125,18 +151,16 @@ def fetch_command(message_fetcher: MessageFetcher, message_store: MessageStore):
         print(f"An error occurred: {e}")
 
 
-def prebatch_command(input_dir: str, output_dir: str, batch_index: int = None):
-    message_files = sorted(glob.glob(f"{input_dir}/*.json"))
-    if not message_files:
-        print(f"No message files found in {input_dir}")
-        return
-    if batch_index is None or batch_index < 0 or batch_index >= len(message_files):
-        batch_index = 0
-    target_file = message_files[batch_index]
-    print(f"Pre-batching file: {target_file}")
-
-    out_path = prebatch(target_file, output_dir)
-    print(f"Pre-batched file saved to {out_path}")
+def prebatch_command(
+    prebatch_pipeline: PrebatchPipeline, input_filename: str, fetched_messages: Dict
+):
+    try:
+        print(f"Pre-batching file: {input_filename}")
+        out_path = prebatch_pipeline.run(input_filename, fetched_messages)
+        print(f"Pre-batched file saved to {out_path}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    return
 
 
 def reset_data():

@@ -37,9 +37,9 @@ def test_get_file_by_index(file_store):
     file2 = file_store.data_dir / "file3.json"
     file1.touch()
     file2.touch()
-
-    assert file_store.get_file_by_index(0) == file1.name
-    assert file_store.get_file_by_index(1) == file2.name
+    file_store.get_file_by_index(0)
+    assert file_store.get_file_by_index(0)["filename"] == file1.name
+    assert file_store.get_file_by_index(1)["filename"] == file2.name
 
     with pytest.raises(IndexError):
         file_store.get_file_by_index(2)
