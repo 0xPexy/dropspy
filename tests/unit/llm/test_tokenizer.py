@@ -1,6 +1,5 @@
 import pytest
-from llm.tokenizer import LocalTokenizer, VertexTokenizer, GeminiAPITokenizer
-from config import GOOGLE_API_KEY
+from llm.tokenizer import LocalTokenizer, VertexTokenizer
 
 TEST_TEXTS = [
     "안녕하세요. This is a mixed sentence with English and 한글.",
@@ -20,12 +19,10 @@ expected_vertex_tokens = [15, 39, 34, 27]
 def test_tokenizers(text, expected_local, expected_vertex):
     local = LocalTokenizer()
     local_tokens = local.count_tokens(text)
-    print(f"LocalTokenizer: {local_tokens} tokens")
     assert local_tokens == expected_local
     try:
         vertex = VertexTokenizer(model_name="gemini-1.5-flash-001")
         vertex_tokens = vertex.count_tokens(text)
-        print(f"VertexTokenizer: {vertex_tokens} tokens")
         assert vertex_tokens == expected_vertex
     except AssertionError as e:
         raise AssertionError(f"VertexTokenizer tokens mismatch: {e}")
