@@ -63,10 +63,9 @@ def test_batch_split_cases(max_tokens):
         assert total_tokens <= max_tokens
 
 
-def sample_batches_with_filenames():
+def sample_batches():
     return [
         {
-            "filename": "batch_1.json",
             "messages": [
                 {
                     "channel": "A",
@@ -83,7 +82,6 @@ def sample_batches_with_filenames():
             ],
         },
         {
-            "filename": "batch_2.json",
             "messages": [
                 {
                     "channel": "B",
@@ -97,11 +95,11 @@ def sample_batches_with_filenames():
 
 
 def test_store_stores_files(tmp_path):
-    store = _BatchStore(output_dir=str(tmp_path))
-    batches_with_filenames = sample_batches_with_filenames()
+    store = _BatchStore(data_dir=str(tmp_path))
+    batches_with_filenames = sample_batches()
     batches = [b["messages"] for b in batches_with_filenames]
-    batch_filenames = [b["filename"] for b in batches_with_filenames]
-    files = store.store(batches, batch_filenames)
+    input_filename = "input"
+    files = store.store(batches, f"{input_filename}.json")
     assert len(files) == len(batches)
     for fname, batch in zip(files, batches):
         fpath = tmp_path / fname
@@ -131,7 +129,7 @@ def test_run_creates_files(batch_pipeline, tmp_path):
         {"channel": "@chan3", "time": "2023-01-01 10:05", "text": "msg6"},
     ]
     max_tokens = 32
-    input_filename = "input"
+    input_filename = "2025-05-19_1330~2025-05-26_1323"
     batch_files = batch_pipeline.run(
         max_tokens_per_batch=max_tokens,
         input_filename=f"{tmp_path}/{input_filename}.json",
@@ -141,7 +139,8 @@ def test_run_creates_files(batch_pipeline, tmp_path):
     for idx, f in enumerate(batch_files):
         fpath = Path(f)
         assert fpath.exists()
-        assert fpath.name == f"{input_filename}_batch_{idx+1}of{len(batch_files)}.json"
+        assert fpath.parent.name == input_filename
+        assert fpath.name == f"{idx+1}of{len(batch_files)}.json"
         content = fpath.read_text(encoding="utf-8")
         for msg in prebatched_messages:
             if msg["text"] in content:

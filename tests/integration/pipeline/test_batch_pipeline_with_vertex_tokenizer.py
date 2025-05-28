@@ -33,12 +33,10 @@ def test_batch_pipeline_with_vertex_tokenizer(tmp_path):
         prebatched_messages=messages,
     )
 
-
     expeted_batch_count = 15
     assert len(batch_file_paths) == expeted_batch_count
 
     for idx, fname in enumerate(batch_file_paths):
         fpath = tmp_path / fname
         assert fpath.exists()
-        assert f"batch_{idx+1}of{expeted_batch_count}" in fname
-
+        assert f"{idx+1}of{expeted_batch_count}" in fname
