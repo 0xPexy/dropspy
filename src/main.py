@@ -76,12 +76,13 @@ def setup_cli():
 
 
 def execute_command(
-    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
     chat_info_fetcher: ChatInfoFetcher,
     message_fetcher: MessageFetcher,
     message_store: MessageStore,
     prebatch_pipeline: PrebatchPipeline,
 ):
+    args = parser.parse_args()
     if args.command == "chats":
         chats_command(chat_info_fetcher)
 
@@ -109,7 +110,7 @@ def execute_command(
         reset_data()
 
     else:
-        args.parser.print_help()
+        parser.print_help()
 
 
 def main():
@@ -117,9 +118,12 @@ def main():
         initialize_modules()
     )
     parser = setup_cli()
-    args = parser.parse_args()
     execute_command(
-        args, chat_info_fetcher, message_fetcher, message_store, prebatch_pipeline
+        parser=parser, 
+        chat_info_fetcher=chat_info_fetcher, 
+        message_fetcher=message_fetcher, 
+        message_store=message_store, 
+        prebatch_pipeline=prebatch_pipeline
     )
 
 
