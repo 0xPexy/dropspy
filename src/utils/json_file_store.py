@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Dict
+from typing import Dict, Mapping, Any
 
 
 class JSONFileStore:
@@ -18,7 +18,7 @@ class JSONFileStore:
         for idx, fname in enumerate(files):
             print(f"{idx}: {fname}")
 
-    def get_file_by_index(self, idx: int) -> Dict[str, Dict]:
+    def get_file_by_index(self, idx: int) -> Dict[str, Any]:
         files = self.list_files()
         if idx < 0 or idx >= len(files):
             raise IndexError("Invalid file index")
@@ -26,7 +26,7 @@ class JSONFileStore:
         content = self.load(filename)
         return {"filename": filename, "content": content}
 
-    def save(self, filename: str, data: dict) -> str:
+    def save(self, filename: str, data: Mapping[str, Any]) -> str:
         path = os.path.join(self.data_dir, filename)
         try:
             with open(path, "w", encoding="utf-8") as f:
@@ -44,4 +44,3 @@ class JSONFileStore:
             return {}
         except FileNotFoundError:
             raise FileNotFoundError(f"File not found: {path}")
-        
