@@ -1,66 +1,99 @@
-import os
+__all__ = ["BatchPipeline"]
+
+from pathlib import Path
 from typing import Any, Dict, List
 from llm.tokenizer import Tokenizer
+from utils.formatting import jsonToStr
+from utils.json_file_store import JSONFileStore
 
-class BatchWriter:
-    def __init__(self, output_dir: str):
-        self.output_dir = output_dir
-        os.makedirs(output_dir, exist_ok=True)
-
-    def make_batch_filename(
-        self, messages: List[Dict], batch_idx: int, total_batches: int
-    ) -> str:
-        if not messages:
-            return f"empty-batch_{batch_idx+1}of{total_batches}.md"
-        t_format = "%Y%m%d_%H%M"
-        try:
-            start = messages[0]["time"]
-            end = messages[-1]["time"]
-        except (KeyError, IndexError):
-            start = end = "unknown"
-        return f"{start.replace(':','')}-{end.replace(':','')}-batch_{batch_idx+1}of{total_batches}.md"
-
-    def write_batches(self, batches: List[List[Dict]]) -> List[str]:
-        file_paths = []
-        total = len(batches)
-        for idx, batch in enumerate(batches):
-            fname = self.make_batch_filename(batch, idx, total)
-            fpath = os.path.join(self.output_dir, fname)
-            with open(fpath, "w", encoding="utf-8") as f:
-                for msg in batch:
-                    f.write(f"## Channel: {msg.get('channel')}\n")
-                    f.write(f"### Time: {msg.get('time')}\n")
-                    f.write(f"```\n{msg.get('text')}\n```\n\n")
-            file_paths.append(fname)
-        return file_paths
-
-
-class BatchSplitter:
+class BatchPipeline:
     def __init__(
-        self, tokenizer: Tokenizer, max_tokens_per_batch: int, base_prompt_tokens: int
+        self,
+        output_dir: str,
+        tokenizer: Tokenizer,
     ):
-        self.tokenizer = tokenizer
-        self.max_tokens_per_batch = max_tokens_per_batch
-        self.base_prompt_tokens = base_prompt_tokens
+        self.store = _BatchStore(output_dir=output_dir)
+        self.splitter = _BatchSplitter(tokenizer=tokenizer)
 
-    def split(self, messages: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
+    def run(
+        self,
+        max_tokens_per_batch: int,
+        input_filename: str,
+        prebatched_messages: List[Dict],
+    ) -> List[str]:
+        try:
+            # Step 1: split messages into batches
+            batches = self.splitter.split(
+                max_tokens_per_batch,
+                prebatched_messages,
+            )
+            total = len(batches)
+            batch_filenames = [
+                self._make_batch_filename(
+                    batch, idx, total, original_filename=input_filename
+                )
+                for idx, batch in enumerate(batches)
+            ]
+            # Step 2: store batches
+            batch_file_paths = self.store.store(batches, batch_filenames)
+            return batch_file_paths
+        except Exception as e:
+            raise RuntimeError(f"Error in batch pipeline: {e}")
+
+    def _make_batch_filename(
+        self,
+        batch: List[Dict],
+        batch_idx: int,
+        total_batches: int,
+        original_filename: str,
+    ) -> str:
+        if not batch:
+            return f"empty-batch_{batch_idx+1}of{total_batches}.json"
+        stem = Path(original_filename).stem
+        return f"{stem}_batch_{batch_idx+1}of{total_batches}.json"
+
+
+class _BatchStore(JSONFileStore):
+    def __init__(self, output_dir: str):
+        super().__init__(output_dir)
+
+    def store(self, batches: List[List[Dict]], batch_filenames: List[str]) -> List[str]:
+        try:
+            saved_files = []
+            for messages, fname in zip(batches, batch_filenames):
+                message_dict = {str(i): message for i, message in enumerate(messages)}
+                path = self.save(fname, message_dict)
+                saved_files.append(path)
+            return saved_files
+        except Exception as e:
+            raise RuntimeError(f"Failed to store batches: {e}")
+        
+    
+
+
+class _BatchSplitter:
+    def __init__(self, tokenizer: Tokenizer):
+        self.tokenizer = tokenizer
+
+    def split(
+        self,
+        max_tokens_per_batch: int,
+        messages: List[Dict[str, Any]],
+    ) -> List[List[Dict[str, Any]]]:
         batches = []
         current_batch = []
         current_tokens = 0
-        token_limit = self.max_tokens_per_batch - self.base_prompt_tokens
 
         for msg in messages:
-            formatted = self.format_message(msg)
+            formatted = jsonToStr(msg)
             msg_tokens = self.tokenizer.count_tokens(formatted)
 
-            if msg_tokens > token_limit:
-                print(
-                    f"Message too long: {msg_tokens} tokens, max is {token_limit}, skipping..."
-                )
+            if msg_tokens > max_tokens_per_batch:
                 # Skip messages that are too big
+                print(f"Message too big. Tokens: {msg_tokens} / Max: {max_tokens_per_batch}")
                 continue
 
-            if current_tokens + msg_tokens > token_limit:
+            if current_tokens + msg_tokens > max_tokens_per_batch:
                 if current_batch:
                     batches.append(current_batch)
                 current_batch = [msg]
@@ -72,13 +105,4 @@ class BatchSplitter:
         if current_batch:
             batches.append(current_batch)
         return batches
-
-    def format_message(self, msg: Dict[str, Any]) -> str:
-        # This is where you can inject your markdown or prompt formatting
-        # Example markdown style:
-        return (
-            f"## Channel: {msg['channel']}\n"
-            f"### {msg['time']}\n"
-            f"```text\n{msg['text']}\n```\n"
-        )
 
