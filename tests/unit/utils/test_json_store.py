@@ -1,12 +1,12 @@
 import pytest
 import json
 from pathlib import Path
-from utils.json_file_store import JSONFileStore
+from utils.json_store import JSONStore
 
 
 @pytest.fixture
 def file_store(tmp_path):
-    return JSONFileStore(tmp_path)
+    return JSONStore(tmp_path)
 
 
 def test_list_files(file_store):
@@ -54,4 +54,3 @@ def test_save_and_load(file_store):
 
     loaded_data = file_store.load(filename)
     assert loaded_data == data
-

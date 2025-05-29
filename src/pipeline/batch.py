@@ -1,11 +1,10 @@
-__all__ = ["BatchPipeline"]
+__all__ = ["BatchPipeline", "BatchStore"]
 
 from pathlib import Path
 from typing import Any, Dict, List
 from llm.tokenizer import Tokenizer
 from utils.formatting import jsonToStr
-from utils.json_file_store import JSONFileStore
-
+from utils.json_store import JSONStore
 
 class BatchPipeline:
     def __init__(
@@ -13,7 +12,7 @@ class BatchPipeline:
         output_dir: str,
         tokenizer: Tokenizer,
     ):
-        self.store = _BatchStore(data_dir=output_dir)
+        self.store = BatchStore(data_dir=output_dir)
         self.splitter = _BatchSplitter(tokenizer=tokenizer)
 
     def run(
@@ -28,15 +27,8 @@ class BatchPipeline:
                 max_tokens_per_batch,
                 prebatched_messages,
             )
-            total = len(batches)
-            batch_filenames = [
-                self._make_batch_filename(
-                    batch, idx, total, original_filename=input_filename
-                )
-                for idx, batch in enumerate(batches)
-            ]
             # Step 2: store batches
-            batch_file_paths = self.store.store(
+            batch_file_paths = self.store.save(
                 batches=batches, input_filename=input_filename
             )
             return batch_file_paths
@@ -56,11 +48,11 @@ class BatchPipeline:
         return f"{stem}_batch_{batch_idx+1}of{total_batches}.json"
 
 
-class _BatchStore(JSONFileStore):
+class BatchStore(JSONStore):
     def __init__(self, data_dir: str):
         super().__init__(data_dir)
 
-    def store(
+    def save(
         self,
         batches: List[List[Dict]],
         input_filename: str,
@@ -76,7 +68,7 @@ class _BatchStore(JSONFileStore):
                 filename = f"{idx+1}of{total_batches}.json"
                 path = batch_dir / filename
                 message_dict = {str(i): message for i, message in enumerate(messages)}
-                self.save(str(path), message_dict)
+                self._save(str(path), message_dict)
                 saved_files.append(str(path))
             return saved_files
         except Exception as e:

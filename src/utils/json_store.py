@@ -3,7 +3,7 @@ import json
 from typing import Dict, Mapping, Any
 
 
-class JSONFileStore:
+class JSONStore:
     def __init__(self, data_dir: str):
         self.data_dir = data_dir
         os.makedirs(self.data_dir, exist_ok=True)
@@ -23,10 +23,10 @@ class JSONFileStore:
         if idx < 0 or idx >= len(files):
             raise IndexError("Invalid file index")
         filename = files[idx]
-        content = self.load(filename)
+        content = self._load(filename)
         return {"filename": filename, "content": content}
 
-    def save(self, filename: str, data: Mapping[str, Any]) -> str:
+    def _save(self, filename: str, data: Mapping[str, Any]) -> str:
         path = os.path.join(self.data_dir, filename)
         try:
             with open(path, "w", encoding="utf-8") as f:
@@ -35,7 +35,7 @@ class JSONFileStore:
             raise RuntimeError(f"Failed to save file: {path}") from e
         return path
 
-    def load(self, filename: str) -> dict:
+    def _load(self, filename: str) -> dict:
         path = os.path.join(self.data_dir, filename)
         try:
             with open(path, "r", encoding="utf-8") as f:

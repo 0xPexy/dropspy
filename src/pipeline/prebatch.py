@@ -3,16 +3,16 @@ import os
 from collections import Counter
 from pathlib import Path
 from typing import List, Dict
-from utils.json_file_store import JSONFileStore
+from utils.json_store import JSONStore
 
 
-class PrebatchStore(JSONFileStore):
+class PrebatchStore(JSONStore):
     def __init__(self, output_dir: str):
         super().__init__(output_dir)
 
-    def store(self, input_filename: str, prebatched_messages: List[Dict]) -> str:
+    def save(self, input_filename: str, prebatched_messages: List[Dict]) -> str:
         try:
-            return self.save(Path(input_filename).name, prebatched_messages)
+            return self._save(Path(input_filename).name, prebatched_messages)
         except Exception as e:
             raise RuntimeError(f"Failed to store prebatced messages: {e}")
 
@@ -47,7 +47,7 @@ class PrebatchPipeline:
             unique_messages = self.prebatcher.prebatch(
                 fetched_messages=fetched_messages
             )
-            out_path = self.prebatchStore.store(input_filename, unique_messages)
+            out_path = self.prebatchStore.save(input_filename, unique_messages)
             return out_path
         except Exception as e:
             raise RuntimeError(f"Error in prebatch pipeline: {e}")

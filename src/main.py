@@ -3,7 +3,7 @@ import os
 import shutil
 import glob
 from typing import List, Dict, Any
-from telegram.chat_info_fetcher import ChatInfoFetcher
+from pipeline.fetch import ChatInfoFetcher
 from config import (
     DATA_DIRECTORY_ROOT,
     TELEGRAM_API_ID,
@@ -15,8 +15,8 @@ from config import (
     PATH_CHAT_MESSAGES_DIR,
     PATH_CHAT_PREBATCHES_DIR,
 )
-from telegram.message_fetcher import MessageFetcher
-from telegram.message_store import MessageStore
+from pipeline.fetch import MessageFetcher
+from pipeline.fetch import MessageStore
 from pipeline.prebatch import PrebatchPipeline
 
 
@@ -119,11 +119,11 @@ def main():
     )
     parser = setup_cli()
     execute_command(
-        parser=parser, 
-        chat_info_fetcher=chat_info_fetcher, 
-        message_fetcher=message_fetcher, 
-        message_store=message_store, 
-        prebatch_pipeline=prebatch_pipeline
+        parser=parser,
+        chat_info_fetcher=chat_info_fetcher,
+        message_fetcher=message_fetcher,
+        message_store=message_store,
+        prebatch_pipeline=prebatch_pipeline,
     )
 
 
@@ -148,7 +148,7 @@ def fetch_command(message_fetcher: MessageFetcher, message_store: MessageStore):
     try:
         msgs = message_fetcher.fetch()
         print(f"Fetched {len(msgs)} messages.")
-        path = message_store.save_messages(msgs)
+        path = message_store.save(msgs)
         print(f"Saved messages to {path}")
     # TODO: add more specific exceptions
     except Exception as e:

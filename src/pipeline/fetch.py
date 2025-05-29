@@ -1,13 +1,37 @@
-# src/telegram/message_fetcher.py
-
-import os
-import json
-from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Optional
+all = ["FetchPipeline", "MessageStore"]
+#from telegram.message_fetcher import KST
 from telethon.sync import TelegramClient
 from telethon.tl.functions.messages import GetHistoryRequest
+from datetime import datetime, timedelta
+from utils.json_store import JSONStore
+from typing import Dict, List, Optional
 
-KST = timezone(timedelta(hours=9))
+
+class FetchPipeline:
+    def __init__(self, data_dir: str):
+        self.message_store = MessageStore(data_dir)
+
+    def run(self, messages: List[Dict]) -> str:
+        return self.message_store.save(messages)
+
+
+class MessageStore(JSONStore):
+    def __init__(self, data_dir: str):
+        super().__init__(data_dir)
+
+    def save(self, messages: List[Dict]) -> str:
+        if not messages:
+            raise ValueError("No messages to save.")
+        filename = self._generate_filename(messages)
+        return self._save(filename, messages)
+
+    def load(self, filename: str) -> List[Dict]:
+        return self._load(filename)
+
+    def _generate_filename(self, messages: List[Dict]) -> str:
+        start = messages[0]["time"].replace(":", "").replace(" ", "_")
+        end = messages[-1]["time"].replace(":", "").replace(" ", "_")
+        return f"{start}~{end}.json"
 
 
 class MessageFetcher:
@@ -136,3 +160,52 @@ class MessageFetcher:
         all_messages.sort(key=lambda m: m["time"])
         self._save_last_fetch_times(new_last_fetch)
         return all_messages
+
+
+class ChatInfoFetcher:
+    def __init__(self, api_id: int, api_hash: str, session_name: str):
+        self.api_id = api_id
+        self.api_hash = api_hash
+        self.session_name = session_name
+        self.chats: List[Dict] = []
+        self.handle_to_id: Dict[str, str] = {}
+        self.id_to_handle: Dict[str, str] = {}
+
+    def fetch_participating_chats_info(self):
+        with TelegramClient(self.session_name, self.api_id, self.api_hash) as client:
+            dialogs = client.get_dialogs()
+            result = []
+            for dialog in dialogs:
+                entity = dialog.entity
+                chat_id = str(entity.id)
+                title = getattr(entity, "title", "N/A")
+                username = getattr(entity, "username", None)
+                handle = f"@{username}" if username else None
+
+                chat_info = {
+                    "id": chat_id,
+                    "title": title,
+                    "handle": handle,
+                }
+                result.append(chat_info)
+                if handle:
+                    self.handle_to_id[handle] = chat_id
+                    self.id_to_handle[chat_id] = handle
+
+            self.chats = result
+            return result
+
+    def get_id_by_handle(self, handle: str) -> Optional[str]:
+        if not self.chats:
+            self.fetch_participating_chats_info()
+        return self.handle_to_id.get(handle)
+
+    def get_handle_by_id(self, chat_id: str) -> Optional[str]:
+        if not self.chats:
+            self.fetch_participating_chats_info()
+        return self.id_to_handle.get(chat_id)
+
+    def get_chats_info(self) -> List[Dict]:
+        if not self.chats:
+            self.fetch_participating_chats_info()
+        return self.chats

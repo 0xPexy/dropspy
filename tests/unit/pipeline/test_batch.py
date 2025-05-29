@@ -2,7 +2,7 @@ from pathlib import Path
 from llm.tokenizer import Tokenizer
 import pytest
 from pipeline.batch import _BatchSplitter, BatchPipeline
-from pipeline.batch import _BatchStore
+from pipeline.batch import BatchStore
 from datetime import datetime, timedelta
 
 from utils.formatting import jsonToStr
@@ -95,11 +95,11 @@ def sample_batches():
 
 
 def test_store_stores_files(tmp_path):
-    store = _BatchStore(data_dir=str(tmp_path))
+    store = BatchStore(data_dir=str(tmp_path))
     batches_with_filenames = sample_batches()
     batches = [b["messages"] for b in batches_with_filenames]
     input_filename = "input"
-    files = store.store(batches, f"{input_filename}.json")
+    files = store.save(batches, f"{input_filename}.json")
     assert len(files) == len(batches)
     for fname, batch in zip(files, batches):
         fpath = tmp_path / fname
