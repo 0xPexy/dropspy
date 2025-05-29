@@ -1,5 +1,6 @@
-from typing import Any, List, Dict, Tuple, Optional
+from typing import Any, Awaitable, Callable, List, Dict, Tuple, Optional, cast
 from datetime import datetime
+from telegram.types import ChatInfo, RawMessage
 from telethon.sync import TelegramClient
 from telethon.tl.functions.messages import GetHistoryRequest
 from telethon.tl.types import (
@@ -9,39 +10,36 @@ from telethon.tl.types import (
     Channel,
     User,
     Chat,
+    TypeInputPeer,
+    Message,
 )
+from telethon.tl.types.messages import Messages
+from telethon.hints import Entity
 from telethon.tl.custom import Dialog
-
-"""TODO: use this in pipeline/fetch.py
-from src.telegram.api_adapter import TelegramAPIAdapter
-async with TelegramAPIAdapter(api_id, api_hash, session_name) as adapter:
-    chat_list = await adapter.fetch_participating_chats()
-    entity, messages = await adapter.fetch_channel_messages("@channel", since)
-"""
 
 
 class TelegramAPIAdapter:
     def __init__(self, api_id: int, api_hash: str, session_name: str):
-        self.api_id = api_id
-        self.api_hash = api_hash
-        self.session_name = session_name
-        self.client: Optional[TelegramClient] = None
+        self.client = TelegramClient(
+            session=session_name, api_id=api_id, api_hash=api_hash
+        )
 
-    async def __aenter__(self):
-        self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
-        await self.client.connect()
+    async def connect(self):
+        if not self.client.is_connected():
+            await self.client.connect()
         if not await self.client.is_user_authorized():
             raise RuntimeError("User not authorized.")
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
-        if self.client:
-            await self.client.disconnect()
+    async def disconnect(self):
+        if self.client.is_connected():
+            disconnect = cast(Callable[[], Awaitable[None]], self.client.disconnect)
+            await disconnect()
 
-    async def fetch_participating_chats(self) -> List[Dict[str, Any]]:
+    async def fetch_participating_chats_info(self) -> List[ChatInfo]:
+        if not self.client.is_connected():
+            raise RuntimeError("Client not connected.")
         try:
-            if self.client is None:
-                raise RuntimeError("Telegram client is not initialized.")
             dialogs = await self.client.get_dialogs()
             result = []
             for dialog in dialogs:
@@ -50,67 +48,98 @@ class TelegramAPIAdapter:
         except Exception as e:
             raise RuntimeError(f"Failed to fetch participating chats: {e}")
 
-    def _process_chat_info(self, dialog: Dialog) -> Dict[str, Any]:
+    def _process_chat_info(self, dialog: Dialog) -> ChatInfo:
         entity = dialog.entity
-        chat_id = str(entity.id)
+        chat_id = entity.id
         title = getattr(entity, "title", "N/A")
         username = getattr(entity, "username", None)
-        handle = f"@{username}" if username else None
-        chat_info = {
-            "id": chat_id,
-            "title": title,
-            "handle": handle,
-        }
+        handle = f"@{username}" if username else ""
+        chat_info = ChatInfo(id=chat_id, title=title, handle=handle)
         return chat_info
 
     async def fetch_channel_messages(
-        self, chat: str, since: datetime, limit: int = 100
-    ) -> Tuple[Any, List[Dict[str, Any]]]:
+        self, handle: str, after: datetime, limit: int = 100
+    ) -> List[RawMessage]:
         try:
-            if self.client is None:
-                raise RuntimeError("Telegram client is not initialized.")
-            entity = await self.client.get_entity(chat)
-            if isinstance(entity, Channel):
-                input_peer = InputPeerChannel(entity.id, entity.access_hash or 0)
-            elif isinstance(entity, User):
-                input_peer = InputPeerUser(entity.id, entity.access_hash or 0)
-            elif isinstance(entity, Chat):
-                input_peer = InputPeerChat(entity.id)
-            else:
-                raise ValueError("Unsupported entity type")
-            messages = []
-            offset_id = 0
-            while True:
-                history = await self.client(
-                    GetHistoryRequest(
-                        peer=input_peer,
-                        limit=limit,
-                        offset_id=offset_id,
-                        offset_date=None,
-                        add_offset=0,
-                        max_id=0,
-                        min_id=0,
-                        hash=0,
-                    )
-                )
-                if not hasattr(history, "messages") or not history.messages:
-                    break
-                for msg in history.messages:
-                    if msg.date <= since:
-                        messages.reverse()
-                        return entity, messages
-                    if getattr(msg, "message", None):
-                        messages.append(
-                            {
-                                "id": msg.id,
-                                "date": msg.date,
-                                "text": msg.message.strip(),
-                            }
-                        )
-                if len(history.messages) < limit:
-                    break
-                offset_id = history.messages[-1].id
-            messages.reverse()
-            return entity, messages
+            if not self.client.is_connected():
+                raise RuntimeError("Client not connected.")
+            entity = await self.client.get_entity(handle)
+            if not isinstance(entity, Entity):
+                raise RuntimeError(f"Failed to get entity for {handle}")
+            input_peer = self._get_input_peer(entity)
+            messages = await self._fetch_messages_loop(
+                input_peer=input_peer,
+                channel_id=entity.id,
+                channel_handle=handle,
+                after=after,
+                limit=limit,
+            )
+            return messages
         except Exception as e:
-            raise RuntimeError(f"Failed to fetch messages for {chat}: {e}")
+            raise RuntimeError(f"Failed to fetch messages for {handle}: {e}")
+
+    def _get_input_peer(
+        self, entity: Entity
+    ) -> InputPeerChannel | InputPeerUser | InputPeerChat:
+        if isinstance(entity, Channel):
+            return InputPeerChannel(entity.id, entity.access_hash or 0)
+        elif isinstance(entity, User):
+            return InputPeerUser(entity.id, entity.access_hash or 0)
+        elif isinstance(entity, Chat):
+            return InputPeerChat(entity.id)
+        else:
+            raise RuntimeError(f"Unsupported entity type: {type(entity)}")
+
+    async def _fetch_messages_loop(
+        self,
+        input_peer: Any,
+        channel_id: int,
+        channel_handle: str,
+        after: datetime,
+        limit: int,
+    ) -> List[RawMessage]:
+        raw_messages: List[RawMessage] = []
+        offset_id = 0
+        while True:
+            messages_by_offset = await self._get_messages_by_offset(
+                input_peer, limit, offset_id
+            )
+            for msg in messages_by_offset.messages:
+                if not isinstance(msg, Message) or msg.date is None:
+                    continue
+
+                if msg.date <= after:
+                    raw_messages.reverse()
+                    return raw_messages
+
+                raw_msg = RawMessage(
+                    id=msg.id,
+                    channel_id=channel_id,
+                    channel_handle=channel_handle,
+                    time=msg.date.isoformat(),
+                    text=msg.message.strip(),
+                )
+                raw_messages.append(raw_msg)
+
+            if len(messages_by_offset.messages) < limit:
+                break
+            offset_id = messages_by_offset.messages[-1].id
+
+        raw_messages.reverse()
+        return raw_messages
+
+    async def _get_messages_by_offset(
+        self, input_peer: TypeInputPeer, limit: int, offset_id: int
+    ) -> Messages:
+        return await self.client(
+            GetHistoryRequest(
+                peer=input_peer,
+                limit=limit,
+                offset_id=offset_id,
+                offset_date=None,
+                add_offset=0,
+                max_id=0,
+                min_id=0,
+                hash=0,
+            )
+        )
