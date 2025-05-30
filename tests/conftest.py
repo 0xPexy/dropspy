@@ -3,9 +3,9 @@ import logging.config
 import os
 import pytest
 
+from dropspy.config import LOGGING_CONFIG_PATH
 from dropspy.utils.logging import setup_logging
 
-LOGGING_CONFIG_PATH = "./config/logging.yaml"
 DROPSPY_PREFIX = "dropspy"
 TEST_LOGGER_NAME = DROPSPY_PREFIX + ".test"
 

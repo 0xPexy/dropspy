@@ -53,6 +53,7 @@ def get_data_path(filename_or_subdir: str) -> str:
     """Constructs a full path within the DATA_DIRECTORY_ROOT."""
     return os.path.join(DATA_DIRECTORY_ROOT, filename_or_subdir)
 
+
 PATH_CHAT_MESSAGES_DIR = get_data_path(_CHAT_MESSAGES_SUBDIR_NAME)
 PATH_CHAT_PREBATCHES_DIR = get_data_path(_CHAT_PREBATCHES_SUBDIR_NAME)
 PATH_CHAT_BATCHES_DIR = get_data_path(_CHAT_BATCHES_SUBDIR_NAME)
@@ -61,3 +62,4 @@ PATH_LOG_DIR = get_data_path(_LOG_SUBDIR_NAME)  # Example for logs
 
 # --- Logging Configuration ---
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOGGING_CONFIG_PATH = "./config/logging.yaml"
