@@ -1,6 +1,6 @@
 import pytest
-from llm.tokenizer import VertexTokenizer
-from pipeline.batch import BatchPipeline
+from dropspy.llm.tokenizer import VertexTokenizer
+from dropspy.pipeline.batch import BatchPipeline
 from datetime import datetime, timedelta
 
 

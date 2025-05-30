@@ -2,7 +2,7 @@ import os
 from typing import List
 from dotenv import load_dotenv
 import pytest
-from telegram.api_adapter import TelegramAPIAdapter
+from dropspy.telegram.api_adapter import TelegramAPIAdapter
 from datetime import datetime, timedelta, timezone
 import asyncio
 
@@ -63,5 +63,14 @@ async def test_fetch_channel_messages_e2e(api_adapter, target_chats):
         print(f"\n📥 Fetched messages channel: {handle} / from: {last_fetch.strftime('%Y-%m-%d %H:%M:%S %Z')} / count: {len(messages)}")
         for msg in messages:
             assert msg.validate()
+    await api_adapter.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_1(api_adapter, target_chats):
+    if len(target_chats) == 0:
+        pytest.skip("Skipping fetch_channel_messages test: no target chats specified")
+    await api_adapter.connect()
+    #await api_adapter.new_fetch(target_chats, datetime.now())
     await api_adapter.disconnect()
 

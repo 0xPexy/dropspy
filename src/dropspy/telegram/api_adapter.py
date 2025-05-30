@@ -1,6 +1,7 @@
 from typing import Any, Awaitable, Callable, List, Dict, Tuple, Optional, cast
 from datetime import datetime
-from telegram.types import ChatInfo, RawMessage
+import logging
+from dropspy.telegram.types import ChatInfo, RawMessage
 from telethon.sync import TelegramClient
 from telethon.tl.functions.messages import GetHistoryRequest
 from telethon.tl.types import (
@@ -17,6 +18,7 @@ from telethon.tl.types.messages import Messages
 from telethon.hints import Entity
 from telethon.tl.custom import Dialog
 
+logger = logging.getLogger(__name__)
 
 class TelegramAPIAdapter:
     def __init__(self, api_id: int, api_hash: str, session_name: str):
@@ -78,6 +80,74 @@ class TelegramAPIAdapter:
         except Exception as e:
             raise RuntimeError(f"Failed to fetch messages for {handle}: {e}")
 
+    async def new_fetch(
+        self,
+        channel_handles: List[str],
+        last_fetch: datetime,
+        limit_per_api_call: int = 100,
+    ) -> List[RawMessage]:
+        entities = await self._get_entities(channel_handles)
+        logger.info(f"Entities: {entities}")
+        return []
+
+    async def _get_entities(self, channel_handles: List[str]) -> List[Entity]:
+        entities = await self.client.get_entity(channel_handles)
+        if isinstance(entities, Entity):
+            entities = [entities]
+        return entities
+
+    async def _fetch_messages(self, channel_entity: Entity, limit: int):
+        async for messages in self.client.iter_messages(
+            entity=channel_entity, limit=limit
+        ):
+            if not isinstance(messages, Message) or messages.date is None:
+                continue
+            print(messages)
+
+    async def _fetch_loop(
+        self, channel_entity: Entity, last_fetch: datetime, limit: int
+    ) -> Tuple[bool, List[RawMessage]]:
+        raw_messages: List[RawMessage] = []
+        async for message in self.client.iter_messages(
+            entity=channel_entity, limit=limit
+        ):
+            if not isinstance(message, Message) or message.date is None:
+                continue
+            if message.date <= last_fetch:
+                return True, raw_messages
+            target_room = message.peer_id
+            print(target_room)
+            # target_room.channel_id
+            # raw_meesage = RawMessage(
+            #     id=message.id,
+            #     channel_id=channel_entity.id,
+            #     channel_handle=message.,
+            #     time=message.date.isoformat(),
+            #     text=message.message.strip(),
+            # )
+        return True, []
+
+    # def _temp(self):
+    #     raw_messages: List[RawMessage] = []
+    #     async for msg in self.client.iter_messages(entity, limit=limit, reverse=False):
+    #         if not isinstance(msg, Message) or msg.date is None:
+    #             continue
+
+    #         if msg.date <= after:
+    #             break
+
+    #         raw_msg = RawMessage(
+    #             id=msg.id,
+    #             channel_id=entity.id,
+    #             channel_handle=handle,
+    #             time=msg.date.isoformat(),
+    #             text=msg.message.strip(),
+    #         )
+    #         raw_messages.append(raw_msg)
+
+    #     raw_messages.reverse()  
+    #     return raw_messages
+
     def _get_input_peer(
         self, entity: Entity
     ) -> InputPeerChannel | InputPeerUser | InputPeerChat:
@@ -92,7 +162,7 @@ class TelegramAPIAdapter:
 
     async def _fetch_messages_loop(
         self,
-        input_peer: Any,
+        input_peer: InputPeerChannel | InputPeerUser | InputPeerChat,
         channel_id: int,
         channel_handle: str,
         after: datetime,

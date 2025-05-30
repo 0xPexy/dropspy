@@ -1,5 +1,5 @@
 import pytest
-from telegram.message_fetcher import MessageFetcher
+from dropspy.pipeline.fetch import MessageFetcher
 from datetime import datetime, timedelta, timezone
 from collections import Counter
 

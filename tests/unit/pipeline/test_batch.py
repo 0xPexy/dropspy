@@ -1,11 +1,11 @@
 from pathlib import Path
-from llm.tokenizer import Tokenizer
+from dropspy.llm.tokenizer import Tokenizer
 import pytest
-from pipeline.batch import _BatchSplitter, BatchPipeline
-from pipeline.batch import BatchStore
+from dropspy.pipeline.batch import _BatchSplitter, BatchPipeline
+from dropspy.pipeline.batch import BatchStore
 from datetime import datetime, timedelta
 
-from utils.formatting import jsonToStr
+from dropspy.utils.formatting import jsonToStr
 
 
 class DummyTokenizer(Tokenizer):

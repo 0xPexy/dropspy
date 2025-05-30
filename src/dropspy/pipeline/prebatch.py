@@ -3,7 +3,7 @@ import os
 from collections import Counter
 from pathlib import Path
 from typing import List, Dict
-from utils.json_store import JSONStore
+from dropspy.utils.json_store import JSONStore
 
 
 class PrebatchStore(JSONStore):

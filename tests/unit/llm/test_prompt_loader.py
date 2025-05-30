@@ -1,5 +1,5 @@
 import pytest
-from llm.prompt_loader import PromptLoader
+from dropspy.llm.prompt_loader import PromptLoader
 
 
 def test_prompt_loader_load_success(tmp_path):

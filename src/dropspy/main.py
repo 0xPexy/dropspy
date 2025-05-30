@@ -1,10 +1,12 @@
 import argparse
+import logging
+import logging.config
 import os
 import shutil
 import glob
 from typing import List, Dict, Any
-from pipeline.fetch import ChatInfoFetcher
-from config import (
+from dropspy.pipeline.fetch import ChatInfoFetcher
+from dropspy.config import (
     DATA_DIRECTORY_ROOT,
     TELEGRAM_API_ID,
     TELEGRAM_API_HASH,
@@ -15,10 +17,12 @@ from config import (
     PATH_CHAT_MESSAGES_DIR,
     PATH_CHAT_PREBATCHES_DIR,
 )
-from pipeline.fetch import MessageFetcher
-from pipeline.fetch import MessageStore
-from pipeline.prebatch import PrebatchPipeline
+from dropspy.pipeline.fetch import MessageFetcher
+from dropspy.pipeline.fetch import MessageStore
+from dropspy.pipeline.prebatch import PrebatchPipeline
 
+LOGGING_CONFIG_PATH = "./config/logging.conf"
+logging.config.fileConfig(LOGGING_CONFIG_PATH, disable_existing_loggers=False)
 
 def initialize_modules() -> (
     tuple[ChatInfoFetcher, MessageFetcher, MessageStore, PrebatchPipeline]

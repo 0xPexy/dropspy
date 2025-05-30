@@ -1,7 +1,7 @@
 import pytest
 import json
 from pathlib import Path
-from pipeline.prebatch import PrebatchPipeline
+from dropspy.pipeline.prebatch import PrebatchPipeline
 
 
 @pytest.fixture

@@ -12,14 +12,13 @@ WORKDIR /app
 
 COPY pyproject.toml ./
 COPY src ./src
+COPY tests ./tests
+COPY pytest.ini ./
+COPY README.md ./
+
 
 RUN pip install --upgrade pip
 RUN pip install .
 
-COPY scripts ./scripts
-COPY prompts ./prompts
-COPY data ./data
-COPY pytest.ini ./
-COPY README.md ./
 
-CMD ["python", "src/main.py"]
+# CMD ["python", "src/main.py"]

@@ -1,5 +1,5 @@
 import pytest
-from llm.tokenizer import LocalTokenizer, VertexTokenizer
+from dropspy.llm.tokenizer import LocalTokenizer, VertexTokenizer
 
 TEST_TEXTS = [
     "안녕하세요. This is a mixed sentence with English and 한글.",

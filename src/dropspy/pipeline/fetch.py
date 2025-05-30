@@ -3,7 +3,7 @@ all = ["FetchPipeline", "MessageStore"]
 from telethon.sync import TelegramClient
 from telethon.tl.functions.messages import GetHistoryRequest
 from datetime import datetime, timedelta
-from utils.json_store import JSONStore
+from dropspy.utils.json_store import JSONStore
 from typing import Dict, List, Optional
 
 

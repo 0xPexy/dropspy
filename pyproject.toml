@@ -9,6 +9,8 @@ description = "dropspy"
 dependencies = [
     "pytest",
     "pytest-asyncio",
+    "colorlog",
+    "pyyaml",
     "telethon",
     "python-dotenv",
     "google-cloud-aiplatform[tokenization]",

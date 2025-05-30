@@ -2,7 +2,8 @@
 
 import os
 from dotenv import load_dotenv
-from telegram.message_fetcher import MessageFetcher
+from dropspy.pipeline.fetch import MessageFetcher
+
 
 def test_message_fetcher_integration(tmp_path):
     load_dotenv(dotenv_path=".env.test")
@@ -13,7 +14,9 @@ def test_message_fetcher_integration(tmp_path):
     last_fetch_path = tmp_path / "fetch.json"
     default_days = int(os.getenv("TELEGRAM_DEFAULT_FETCH_DAYS", "7"))
 
-    fetcher = MessageFetcher(api_id, api_hash, session_name, target_chats, str(last_fetch_path), default_days)
+    fetcher = MessageFetcher(
+        api_id, api_hash, session_name, target_chats, str(last_fetch_path), default_days
+    )
     msgs = fetcher.fetch()
     assert isinstance(msgs, list)
     for m in msgs:

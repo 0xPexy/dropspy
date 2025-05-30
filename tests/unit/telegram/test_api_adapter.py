@@ -2,7 +2,7 @@ from datetime import datetime
 import pytest
 from unittest.mock import MagicMock, patch
 
-from telegram.api_adapter import TelegramAPIAdapter
+from dropspy.telegram.api_adapter import TelegramAPIAdapter
 from telethon import TelegramClient
 
 

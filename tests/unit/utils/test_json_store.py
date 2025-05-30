@@ -1,7 +1,7 @@
 import pytest
 import json
 from pathlib import Path
-from utils.json_store import JSONStore
+from dropspy.utils.json_store import JSONStore
 
 
 @pytest.fixture

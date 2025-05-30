@@ -2,9 +2,9 @@ __all__ = ["BatchPipeline", "BatchStore"]
 
 from pathlib import Path
 from typing import Any, Dict, List
-from llm.tokenizer import Tokenizer
-from utils.formatting import jsonToStr
-from utils.json_store import JSONStore
+from dropspy.llm.tokenizer import Tokenizer
+from dropspy.utils.formatting import jsonToStr
+from dropspy.utils.json_store import JSONStore
 
 class BatchPipeline:
     def __init__(
