@@ -60,17 +60,20 @@ async def test_fetch_channel_messages_e2e(api_adapter, target_chats):
             handle, after=last_fetch, limit=100
         )
         assert isinstance(messages, list)
-        print(f"\n📥 Fetched messages channel: {handle} / from: {last_fetch.strftime('%Y-%m-%d %H:%M:%S %Z')} / count: {len(messages)}")
+        print(
+            f"\n📥 Fetched messages channel: {handle} / from: {last_fetch.strftime('%Y-%m-%d %H:%M:%S %Z')} / count: {len(messages)}"
+        )
         for msg in messages:
             assert msg.validate()
     await api_adapter.disconnect()
 
 
 @pytest.mark.asyncio
-async def test_1(api_adapter, target_chats):
+async def test_new_fetch(test_logger, api_adapter, target_chats):
     if len(target_chats) == 0:
         pytest.skip("Skipping fetch_channel_messages test: no target chats specified")
     await api_adapter.connect()
-    #await api_adapter.new_fetch(target_chats, datetime.now())
+    fetched = await api_adapter.new_fetch(
+        target_chats, datetime.now(tz=timezone.utc) - timedelta(days=1)
+    )
     await api_adapter.disconnect()
-

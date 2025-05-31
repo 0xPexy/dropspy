@@ -20,11 +20,15 @@ from telethon.tl.custom import Dialog
 
 logger = logging.getLogger(__name__)
 
+
 class TelegramAPIAdapter:
-    def __init__(self, api_id: int, api_hash: str, session_name: str):
+    def __init__(
+        self, api_id: int, api_hash: str, session_name: str, max_api_calls: int = 30
+    ):
         self.client = TelegramClient(
             session=session_name, api_id=api_id, api_hash=api_hash
         )
+        self.max_api_calls = max_api_calls
 
     async def connect(self):
         if not self.client.is_connected():
@@ -85,10 +89,17 @@ class TelegramAPIAdapter:
         channel_handles: List[str],
         last_fetch: datetime,
         limit_per_api_call: int = 100,
-    ) -> List[RawMessage]:
+    ) -> Dict[str, List[RawMessage]]:
+        fetched: Dict[str, List[RawMessage]] = dict()
         entities = await self._get_entities(channel_handles)
-        logger.info(f"Entities: {entities}")
-        return []
+        for idx, entity in enumerate(entities):
+            if not isinstance(entity, Channel):
+                continue
+            messages = await self._fetch_messages(
+                entity, last_fetch, limit_per_api_call
+            )
+            fetched[channel_handles[idx]] = messages
+        return fetched
 
     async def _get_entities(self, channel_handles: List[str]) -> List[Entity]:
         entities = await self.client.get_entity(channel_handles)
@@ -96,16 +107,24 @@ class TelegramAPIAdapter:
             entities = [entities]
         return entities
 
-    async def _fetch_messages(self, channel_entity: Entity, limit: int):
-        async for messages in self.client.iter_messages(
-            entity=channel_entity, limit=limit
-        ):
-            if not isinstance(messages, Message) or messages.date is None:
-                continue
-            print(messages)
+    async def _fetch_messages(
+        self, channel_entity: Channel, last_fetch: datetime, limit: int
+    ) -> List[RawMessage]:
+        fetched = []
+        trials = 0
+        while True:
+            end, messages = await self._fetch_loop(
+                channel_entity=channel_entity, last_fetch=last_fetch, limit=limit
+            )
+            fetched.extend(messages)
+            trials += 1
+            if end or trials >= self.max_api_calls:
+                break
+        fetched.reverse()
+        return fetched
 
     async def _fetch_loop(
-        self, channel_entity: Entity, last_fetch: datetime, limit: int
+        self, channel_entity: Channel, last_fetch: datetime, limit: int
     ) -> Tuple[bool, List[RawMessage]]:
         raw_messages: List[RawMessage] = []
         async for message in self.client.iter_messages(
@@ -115,17 +134,17 @@ class TelegramAPIAdapter:
                 continue
             if message.date <= last_fetch:
                 return True, raw_messages
-            target_room = message.peer_id
-            print(target_room)
-            # target_room.channel_id
-            # raw_meesage = RawMessage(
-            #     id=message.id,
-            #     channel_id=channel_entity.id,
-            #     channel_handle=message.,
-            #     time=message.date.isoformat(),
-            #     text=message.message.strip(),
-            # )
-        return True, []
+            raw_meesage = RawMessage(
+                id=message.id,
+                channel_id=channel_entity.id,
+                channel_handle=channel_entity.username or "",
+                time=message.date.isoformat(),
+                text=message.message.strip(),
+            )
+            raw_messages.append(raw_meesage)
+        if len(raw_messages) < limit:
+            return True, raw_messages
+        return False, raw_messages
 
     # def _temp(self):
     #     raw_messages: List[RawMessage] = []
@@ -145,7 +164,7 @@ class TelegramAPIAdapter:
     #         )
     #         raw_messages.append(raw_msg)
 
-    #     raw_messages.reverse()  
+    #     raw_messages.reverse()
     #     return raw_messages
 
     def _get_input_peer(
