@@ -16,13 +16,13 @@ from dropspy.config import (
     PATH_FETCH_RECORD_FILE,
     PATH_CHAT_MESSAGES_DIR,
     PATH_CHAT_PREBATCHES_DIR,
+    LOGGING_CONFIG_PATH,
 )
 from dropspy.pipeline.fetch import MessageFetcher
 from dropspy.pipeline.fetch import MessageStore
 from dropspy.pipeline.prebatch import PrebatchPipeline
+from dropspy.utils.logging import setup_logging
 
-LOGGING_CONFIG_PATH = "./config/logging.conf"
-logging.config.fileConfig(LOGGING_CONFIG_PATH, disable_existing_loggers=False)
 
 def initialize_modules() -> (
     tuple[ChatInfoFetcher, MessageFetcher, MessageStore, PrebatchPipeline]
@@ -118,6 +118,7 @@ def execute_command(
 
 
 def main():
+    setup_logging(LOGGING_CONFIG_PATH)
     chat_info_fetcher, message_fetcher, message_store, prebatch_pipeline = (
         initialize_modules()
     )
