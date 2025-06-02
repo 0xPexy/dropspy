@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 # --- Telegram API Credentials & Settings ---
 TELEGRAM_API_ID = int(os.getenv("TELEGRAM_API_ID", "0"))
 TELEGRAM_API_HASH = os.getenv("TELEGRAM_API_HASH", "")
@@ -63,3 +64,4 @@ PATH_LOG_DIR = get_data_path(_LOG_SUBDIR_NAME)  # Example for logs
 # --- Logging Configuration ---
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 LOGGING_CONFIG_PATH = "./config/logging.yaml"
+LOGGER_PREFIX = "dropspy"

@@ -5,7 +5,7 @@ import json
 
 
 @dataclass
-class ChatInfo:
+class ChannelInfo:
     id: int
     title: str
     handle: str
@@ -25,7 +25,7 @@ class RawMessage:
     id: int
     channel_id: int
     channel_handle: str
-    time: str  # ISO format string
+    date: datetime
     text: str
 
     def validate(self) -> bool:
@@ -33,8 +33,7 @@ class RawMessage:
             assert isinstance(self.id, int)
             assert isinstance(self.channel_id, int)
             assert isinstance(self.channel_handle, str)
-            # Validate ISO datetime format
-            datetime.fromisoformat(self.time)
+            assert isinstance(self.date, datetime)
             assert isinstance(self.text, str)
             return True
         except (AssertionError, ValueError):

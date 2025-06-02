@@ -27,7 +27,7 @@ loggers:
     handlers: [consoleHandler]
     propagate: True
 
-  dropspy.test:
+  dropspy.tests:
     level: DEBUG
     handlers: [consoleHandler]
     propagate: True

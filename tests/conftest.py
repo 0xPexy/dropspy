@@ -1,39 +1,19 @@
 import logging
-import logging.config
 import os
 import pytest
 
-from dropspy.config import LOGGING_CONFIG_PATH
-from dropspy.utils.logging import setup_logging
+from dropspy.config import LOGGER_PREFIX
+from dropspy.utils.logging import cleanup_logging, setup_logging
 
-DROPSPY_PREFIX = "dropspy"
-TEST_LOGGER_NAME = DROPSPY_PREFIX + ".test"
-
-
-class DropspyModuleFilter(logging.Filter):
-    def filter(self, record):
-        return record.name.startswith(DROPSPY_PREFIX)
+TEST_LOGGER = LOGGER_PREFIX + ".tests"
+logger = logging.getLogger()
 
 
 @pytest.fixture(scope="session", autouse=True)
 def configure_logging_for_tests():
-    setup_logging(LOGGING_CONFIG_PATH)
-    test_logger = logging.getLogger(TEST_LOGGER_NAME)
-    test_logger.info("Configuring logging for tests")
-    root_logger = logging.getLogger()
-
-    source_filter = DropspyModuleFilter()
-
-    for handler in root_logger.handlers:
-        handler.addFilter(source_filter)
+    setup_logging()
+    logger.info("Configured logging for tests")
 
     yield
-    test_logger.info("Cleaning up logging for tests")
-    for handler in root_logger.handlers:
-        if source_filter in handler.filters:
-            handler.removeFilter(source_filter)
-
-
-@pytest.fixture
-def test_logger():
-    return logging.getLogger(TEST_LOGGER_NAME)
+    cleanup_logging()
+    logger.info("Cleaned up logging for tests")

@@ -1,26 +1,8 @@
-import os
+import logging
 from typing import List
-from dotenv import load_dotenv
 import pytest
 from dropspy.telegram.api_adapter import TelegramAPIAdapter
 from datetime import datetime, timedelta, timezone
-import asyncio
-
-TEST_ENV_FILE = ".env.test"
-
-
-@pytest.fixture(scope="session", autouse=True)
-def load_env(pytestconfig):
-    load_dotenv(TEST_ENV_FILE)
-    pytestconfig.api_id = int(os.getenv("TELEGRAM_API_ID") or 0)
-    pytestconfig.api_hash = os.getenv("TELEGRAM_API_HASH")
-    pytestconfig.session = os.getenv("TELEGRAM_SESSION_NAME")
-    pytestconfig.target_chats = []
-    target_chats = os.getenv("TELEGRAM_TARGET_CHATS") or None
-    if target_chats:
-        pytestconfig.target_chats = [x.strip() for x in target_chats.split(",")]
-    if not all([pytestconfig.api_id, pytestconfig.api_hash, pytestconfig.session]):
-        pytest.skip("Skipping e2e test: missing required environment variables")
 
 
 @pytest.fixture
@@ -37,43 +19,65 @@ def target_chats(pytestconfig) -> List[str]:
     return pytestconfig.target_chats
 
 
+@pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_fetch_participating_chats_info_e2e(api_adapter):
-    await api_adapter.connect()
-    chats = await api_adapter.fetch_participating_chats_info()
-    assert isinstance(chats, list)
-    assert len(chats) > 0
-    for chat in chats:
-        assert chat.validate()
-    await api_adapter.disconnect()
+async def test_fetch_participating_channels_info_e2e(
+    test_e2e_logger, api_adapter: TelegramAPIAdapter
+):
+    try:
+        await api_adapter.connect()
+        chans = await api_adapter.fetch_participating_channels_info()
+        assert isinstance(chans, list)
+        assert len(chans) > 0
+        for chan in chans:
+            assert chan.validate()
+            test_e2e_logger.debug(
+                "You are participating in: [handle: %s] [title: %s]",
+                chan.handle,
+                chan.title,
+            )
+        await api_adapter.disconnect()
+    except RuntimeError as e:
+        test_e2e_logger.error(e)
+        pytest.fail(str(e))
+    finally:
+        await api_adapter.disconnect()
 
 
+@pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_fetch_channel_messages_e2e(api_adapter, target_chats):
+@pytest.mark.parametrize("days_interval", [1, 3])
+async def test_fetch_messages_e2e(
+    test_e2e_logger,
+    api_adapter: TelegramAPIAdapter,
+    target_chats: List[str],
+    days_interval,
+):
     if len(target_chats) == 0:
         pytest.skip("Skipping fetch_channel_messages test: no target chats specified")
-    await api_adapter.connect()
-    KST = timezone(timedelta(hours=9))
-    last_fetch = datetime.now(tz=KST) - timedelta(days=1)
-    for handle in target_chats:
-        messages = await api_adapter.fetch_channel_messages(
-            handle, after=last_fetch, limit=100
+    MAX_TARGET_CHATS = 3
+    if len(target_chats) > MAX_TARGET_CHATS:
+        target_chats = target_chats[:MAX_TARGET_CHATS]
+    try:
+        await api_adapter.connect()
+        last_fetched_time = datetime.now(tz=timezone.utc) - timedelta(
+            days=days_interval
         )
-        assert isinstance(messages, list)
-        print(
-            f"\n📥 Fetched messages channel: {handle} / from: {last_fetch.strftime('%Y-%m-%d %H:%M:%S %Z')} / count: {len(messages)}"
+        last_fetched = [last_fetched_time] * len(target_chats)
+        fetched = await api_adapter.fetch_messages(
+            channel_handles=target_chats, last_fetch=last_fetched
         )
-        for msg in messages:
-            assert msg.validate()
-    await api_adapter.disconnect()
-
-
-@pytest.mark.asyncio
-async def test_new_fetch(test_logger, api_adapter, target_chats):
-    if len(target_chats) == 0:
-        pytest.skip("Skipping fetch_channel_messages test: no target chats specified")
-    await api_adapter.connect()
-    fetched = await api_adapter.new_fetch(
-        target_chats, datetime.now(tz=timezone.utc) - timedelta(days=1)
-    )
-    await api_adapter.disconnect()
+        for handle, messages in fetched.items():
+            test_e2e_logger.debug(
+                "Fetched messages from channel: %s / count: %d", handle, len(messages)
+            )
+            assert isinstance(messages, list)
+            for msg in messages:
+                assert msg.validate()
+                assert msg.channel_handle == handle
+                assert msg.date > last_fetched_time
+    except RuntimeError as e:
+        test_e2e_logger.error(e)
+        pytest.fail(str(e))
+    finally:
+        await api_adapter.disconnect()
