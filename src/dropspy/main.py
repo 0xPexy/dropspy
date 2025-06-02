@@ -1,11 +1,8 @@
 import argparse
-import logging
-import logging.config
+import asyncio
 import os
 import shutil
-import glob
-from typing import List, Dict, Any
-from dropspy.pipeline.fetch import ChatInfoFetcher
+from typing import List, Dict, Optional
 from dropspy.config import (
     DATA_DIRECTORY_ROOT,
     TELEGRAM_API_ID,
@@ -21,14 +18,18 @@ from dropspy.config import (
 from dropspy.pipeline.fetch import MessageFetcher
 from dropspy.pipeline.fetch import MessageStore
 from dropspy.pipeline.prebatch import PrebatchPipeline
-from dropspy.utils.logging import setup_logging
+from dropspy.telegram.api_adapter import TelegramAPIAdapter
+from dropspy.telegram.types import ChannelInfo
+from dropspy.utils.logging import cleanup_logging, setup_logging
 
 
 def initialize_modules() -> (
-    tuple[ChatInfoFetcher, MessageFetcher, MessageStore, PrebatchPipeline]
+    tuple[TelegramAPIAdapter, MessageFetcher, MessageStore, PrebatchPipeline]
 ):
-    chat_info_fetcher = ChatInfoFetcher(
-        TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_SESSION_NAME
+    telegram_api_adapter = TelegramAPIAdapter(
+        api_id=int(TELEGRAM_API_ID),
+        api_hash=TELEGRAM_API_HASH,
+        session_name=TELEGRAM_SESSION_NAME,
     )
     message_fetcher = MessageFetcher(
         api_id=int(TELEGRAM_API_ID),
@@ -40,7 +41,7 @@ def initialize_modules() -> (
     )
     message_store = MessageStore(PATH_CHAT_MESSAGES_DIR)
     prebatch_pipeline = PrebatchPipeline(PATH_CHAT_PREBATCHES_DIR)
-    return chat_info_fetcher, message_fetcher, message_store, prebatch_pipeline
+    return telegram_api_adapter, message_fetcher, message_store, prebatch_pipeline
 
 
 def setup_cli():
@@ -79,16 +80,16 @@ def setup_cli():
     return parser
 
 
-def execute_command(
+async def execute_command(
     parser: argparse.ArgumentParser,
-    chat_info_fetcher: ChatInfoFetcher,
+    telegram_api_adapter: TelegramAPIAdapter,
     message_fetcher: MessageFetcher,
     message_store: MessageStore,
     prebatch_pipeline: PrebatchPipeline,
 ):
     args = parser.parse_args()
     if args.command == "chats":
-        chats_command(chat_info_fetcher)
+        await chats_command(telegram_api_adapter=telegram_api_adapter)
 
     elif args.command == "fetch":
         fetch_command(message_fetcher=message_fetcher, message_store=message_store)
@@ -117,35 +118,44 @@ def execute_command(
         parser.print_help()
 
 
-def main():
-    setup_logging(LOGGING_CONFIG_PATH)
-    chat_info_fetcher, message_fetcher, message_store, prebatch_pipeline = (
-        initialize_modules()
-    )
-    parser = setup_cli()
-    execute_command(
-        parser=parser,
-        chat_info_fetcher=chat_info_fetcher,
-        message_fetcher=message_fetcher,
-        message_store=message_store,
-        prebatch_pipeline=prebatch_pipeline,
-    )
+async def main():
+    telegram_api_adapter: Optional[TelegramAPIAdapter] = None
+    try:
+        setup_logging(LOGGING_CONFIG_PATH)
+        telegram_api_adapter, message_fetcher, message_store, prebatch_pipeline = (
+            initialize_modules()
+        )
+        parser = setup_cli()
+        await telegram_api_adapter.connect()
+        await execute_command(
+            parser=parser,
+            telegram_api_adapter=telegram_api_adapter,
+            message_fetcher=message_fetcher,
+            message_store=message_store,
+            prebatch_pipeline=prebatch_pipeline,
+        )
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        cleanup_logging()
+        if telegram_api_adapter is not None:
+            await telegram_api_adapter.disconnect()
 
 
-def chats_command(chat_info_fetcher: ChatInfoFetcher):
+async def chats_command(telegram_api_adapter: TelegramAPIAdapter):
     # Call the function to list Telegram chats
-    chat_list = chat_info_fetcher.get_chats_info()
-    print_chats(chat_list)
+    channels = await telegram_api_adapter.fetch_participating_channels_info()
+    print_chats(channels)
 
 
-def print_chats(chats: List[Dict[str, Any]]):
+def print_chats(channels: List[ChannelInfo]):
     print("-" * 40)
     print("✉️ Participating Telegram Chats:")
     print("-" * 40)
-    for chat in chats:
-        print(f"🆔 ID: {chat['id']}")
-        print(f"📛 Title: {chat['title']}")
-        print(f"🔗 Handle: {chat['handle']}")
+    for channel in channels:
+        print(f"🆔 ID: {channel.id}")
+        print(f"📛 Title: {channel.title}")
+        print(f"🔗 Handle: {channel.handle}")
         print("-" * 40)
 
 
@@ -190,4 +200,4 @@ def reset_data():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
