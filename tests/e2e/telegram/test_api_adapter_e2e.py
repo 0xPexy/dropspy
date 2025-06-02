@@ -4,21 +4,6 @@ import pytest
 from dropspy.telegram.api_adapter import TelegramAPIAdapter
 from datetime import datetime, timedelta, timezone
 
-
-@pytest.fixture
-def api_adapter(pytestconfig):
-    return TelegramAPIAdapter(
-        api_id=pytestconfig.api_id,
-        api_hash=pytestconfig.api_hash,
-        session_name=pytestconfig.session,
-    )
-
-
-@pytest.fixture
-def target_chats(pytestconfig) -> List[str]:
-    return pytestconfig.target_chats
-
-
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_fetch_participating_channels_info_e2e(

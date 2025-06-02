@@ -1,12 +1,12 @@
 import logging
+from typing import List
 import pytest
 import os
 from dotenv import load_dotenv
-
 from dropspy.config import LOGGER_PREFIX
+from dropspy.telegram.api_adapter import TelegramAPIAdapter
 
 E2E_TEST_ENV_FILE = ".env.test"
-
 LOGGER_NAME = LOGGER_PREFIX + ".tests.e2e"
 
 
@@ -28,3 +28,17 @@ def load_env(test_e2e_logger, pytestconfig):
         pytestconfig.target_chats = [x.strip() for x in target_chats.split(",")]
     if not all([pytestconfig.api_id, pytestconfig.api_hash, pytestconfig.session]):
         pytest.skip("Skipping e2e test: missing required environment variables")
+
+
+@pytest.fixture
+def api_adapter(pytestconfig):
+    return TelegramAPIAdapter(
+        api_id=pytestconfig.api_id,
+        api_hash=pytestconfig.api_hash,
+        session_name=pytestconfig.session,
+    )
+
+
+@pytest.fixture
+def target_chats(pytestconfig) -> List[str]:
+    return pytestconfig.target_chats
