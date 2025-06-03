@@ -1,6 +1,5 @@
 from typing import Awaitable, Callable, List, Dict, Tuple, cast
 from datetime import datetime
-import logging
 from dropspy.telegram.types import ChannelInfo, RawMessage
 from telethon.sync import TelegramClient
 from telethon.tl.types import (
@@ -13,13 +12,20 @@ from telethon.tl.types.messages import Messages
 from telethon.hints import Entity
 from telethon.tl.custom import Dialog
 
+
 class TelegramAPIAdapter:
     def __init__(
-        self, api_id: int, api_hash: str, session_name: str, max_api_calls: int = 30
+        self,
+        api_id: int,
+        api_hash: str,
+        session_name: str,
+        limit_per_api_call: int = 100,
+        max_api_calls: int = 30,
     ):
         self.client = TelegramClient(
             session=session_name, api_id=api_id, api_hash=api_hash
         )
+        self.limit_per_api_call = limit_per_api_call
         self.max_api_calls = max_api_calls
 
     async def connect(self):
@@ -45,7 +51,7 @@ class TelegramAPIAdapter:
                 result.append(self._process_channel_info(entity))
             return result
         except Exception as e:
-            raise RuntimeError(f"Failed to fetch participating chats: {e}")
+            raise RuntimeError(e)
 
     def _process_channel_info(self, entity: Channel) -> ChannelInfo:
         chat_info = ChannelInfo(
@@ -58,22 +64,20 @@ class TelegramAPIAdapter:
     async def fetch_messages(
         self,
         channel_handles: List[str],
-        last_fetch: List[datetime],
-        limit_per_api_call: int = 100,
-    ) -> Dict[str, List[RawMessage]]:
+        last_fetch: datetime,
+    ) -> List[RawMessage]:
         try:
-            fetched: Dict[str, List[RawMessage]] = dict()
+            fetched: List[RawMessage] = []
             entities = await self._get_entities(channel_handles)
-            for idx, entity in enumerate(entities):
+            for entity in entities:
                 if not isinstance(entity, Channel):
                     continue
-                messages = await self._fetch_messages(
-                    entity, last_fetch[idx], limit_per_api_call
-                )
-                fetched[channel_handles[idx]] = messages
+                messages = await self._fetch_messages(entity, last_fetch)
+                fetched.extend(messages)
+            fetched.sort(key=lambda msg: msg.date)
             return fetched
         except Exception as e:
-            raise RuntimeError(f"Failed to fetch messages: {e}")
+            raise RuntimeError(e)
 
     async def _get_entities(self, channel_handles: List[str]) -> List[Entity]:
         entities = await self.client.get_entity(channel_handles)
@@ -82,19 +86,20 @@ class TelegramAPIAdapter:
         return entities
 
     async def _fetch_messages(
-        self, channel_entity: Channel, last_fetch: datetime, limit: int
+        self, channel_entity: Channel, last_fetch: datetime
     ) -> List[RawMessage]:
         fetched = []
         trials = 0
         while True:
             end, messages = await self._fetch_loop(
-                channel_entity=channel_entity, last_fetch=last_fetch, limit=limit
+                channel_entity=channel_entity,
+                last_fetch=last_fetch,
+                limit=self.limit_per_api_call,
             )
             fetched.extend(messages)
             trials += 1
             if end or trials >= self.max_api_calls:
                 break
-        fetched.reverse()
         return fetched
 
     async def _fetch_loop(

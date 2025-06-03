@@ -4,6 +4,7 @@ import pytest
 from dropspy.telegram.api_adapter import TelegramAPIAdapter
 from datetime import datetime, timedelta, timezone
 
+
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_fetch_participating_channels_info_e2e(
@@ -45,22 +46,19 @@ async def test_fetch_messages_e2e(
         target_chats = target_chats[:MAX_TARGET_CHATS]
     try:
         await api_adapter.connect()
-        last_fetched_time = datetime.now(tz=timezone.utc) - timedelta(
-            days=days_interval
-        )
-        last_fetched = [last_fetched_time] * len(target_chats)
-        fetched = await api_adapter.fetch_messages(
+        last_fetched = datetime.now(tz=timezone.utc) - timedelta(days=days_interval)
+        messages = await api_adapter.fetch_messages(
             channel_handles=target_chats, last_fetch=last_fetched
         )
-        for handle, messages in fetched.items():
-            test_e2e_logger.debug(
-                "Fetched messages from channel: %s / count: %d", handle, len(messages)
-            )
-            assert isinstance(messages, list)
-            for msg in messages:
-                assert msg.validate()
-                assert msg.channel_handle == handle
-                assert msg.date > last_fetched_time
+        test_e2e_logger.debug("Fetched messages count: %s", len(messages))
+        prev_date = last_fetched
+        for message in messages:
+            assert message.validate()
+            assert message.channel_handle in target_chats
+            assert (
+                message.date > last_fetched and message.date >= prev_date
+            ), f"Date {message.date} is before than {prev_date}"
+            prev_date = message.date
     except RuntimeError as e:
         test_e2e_logger.error(e)
         pytest.fail(str(e))
