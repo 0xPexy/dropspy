@@ -1,4 +1,5 @@
 import logging
+import tempfile
 from typing import List
 import pytest
 import os
@@ -42,3 +43,33 @@ def api_adapter(pytestconfig):
 @pytest.fixture
 def target_chats(pytestconfig) -> List[str]:
     return pytestconfig.target_chats
+
+
+@pytest.fixture
+def tmp_last_fetch_file():
+    f = tempfile.NamedTemporaryFile(delete=False)
+    f.close()
+    path = f.name
+    yield path
+    os.unlink(path)
+
+
+@pytest.fixture
+def tmp_msg_dir():
+    d = tempfile.TemporaryDirectory()
+    yield d.name
+    d.cleanup()
+
+
+@pytest.fixture
+def tmp_prebatch_dir():
+    d = tempfile.TemporaryDirectory()
+    yield d.name
+    d.cleanup()
+
+
+@pytest.fixture
+def tmp_batch_dir():
+    d = tempfile.TemporaryDirectory()
+    yield d.name
+    d.cleanup()

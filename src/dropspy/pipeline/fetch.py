@@ -1,211 +1,58 @@
-all = ["FetchPipeline", "MessageStore"]
-#from telegram.message_fetcher import KST
+import logging
 from telethon.sync import TelegramClient
 from telethon.tl.functions.messages import GetHistoryRequest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from dropspy.telegram.api_adapter import TelegramAPIAdapter
+from dropspy.telegram.types import RawMessage
 from dropspy.utils.json_store import JSONStore
 from typing import Dict, List, Optional
 
-
-class FetchPipeline:
-    def __init__(self, data_dir: str):
-        self.message_store = MessageStore(data_dir)
-
-    def run(self, messages: List[Dict]) -> str:
-        return self.message_store.save(messages)
+logger = logging.getLogger(__name__)
 
 
-class MessageStore(JSONStore):
+class FetchStore(JSONStore):
     def __init__(self, data_dir: str):
         super().__init__(data_dir)
+        self.LAST_FETCH_KEY = "last_fetch"
+        self.last_fetch_data_filename = f"{self.LAST_FETCH_KEY}.json"
 
-    def save(self, messages: List[Dict]) -> str:
-        if not messages:
-            raise ValueError("No messages to save.")
-        filename = self._generate_filename(messages)
+    def save_messages(self, filename: str, messages: List[RawMessage]) -> str:
         return self._save(filename, messages)
 
-    def load(self, filename: str) -> List[Dict]:
-        return self._load(filename)
+    def load_messages_by_filename(self, filename: str) -> List[RawMessage]:
+        messages = self._load(filename) or []
+        return [RawMessage(**message) for message in messages]
 
-    def _generate_filename(self, messages: List[Dict]) -> str:
-        start = messages[0]["time"].replace(":", "").replace(" ", "_")
-        end = messages[-1]["time"].replace(":", "").replace(" ", "_")
-        return f"{start}~{end}.json"
+    def load_last_fetch_times(self) -> datetime | None:
+        last_fetch_file = self._load(self.last_fetch_data_filename) or {}
+        return last_fetch_file.get(self.LAST_FETCH_KEY, None)
 
-
-class MessageFetcher:
-    def __init__(
-        self,
-        api_id: int,
-        api_hash: str,
-        session_name: str,
-        target_chats: List[str],
-        last_fetch_path: str,
-        default_fetch_days: int = 7,
-    ):
-        self.api_id = api_id
-        self.api_hash = api_hash
-        self.session_name = session_name
-        self.target_chats = target_chats
-        self.last_fetch_path = last_fetch_path
-        self.default_fetch_days = default_fetch_days
-
-    def _load_last_fetch_times(self) -> Dict[str, Dict[str, str]]:
-        if os.path.exists(self.last_fetch_path):
-            try:
-                with open(self.last_fetch_path, "r") as f:
-                    return json.load(f)
-            except json.JSONDecodeError:
-                print(
-                    f"Warning: Invalid JSON in last fetch file: {self.last_fetch_path}. Ignoring and starting fresh."
-                )
-                return {}
-        return {}
-
-    def _save_last_fetch_times(self, last_fetch_times: Dict[str, Dict[str, str]]):
-        os.makedirs(os.path.dirname(self.last_fetch_path), exist_ok=True)
-        with open(self.last_fetch_path, "w") as f:
-            json.dump(last_fetch_times, f, ensure_ascii=False, indent=2)
-
-    def fetch(self, now: Optional[datetime] = None) -> List[Dict]:
-        last_fetch_times = self._load_last_fetch_times()
-        all_messages = []
-        new_last_fetch = {}
-
-        if now is None:
-            now = datetime.now(KST)
-
-        with TelegramClient(self.session_name, self.api_id, self.api_hash) as client:
-            if not client.is_connected():
-                client.connect()
-            if not client.is_user_authorized():
-                print(
-                    "User is not authorized. Please run an interactive session first to log in."
-                )
-                return
-
-            for chat in self.target_chats:
-                print(f"\n📥 Fetching messages from: {chat}")
-                entity = client.get_entity(chat)
-                chat_id = str(entity.id)
-                chat_handle = chat if chat.startswith("@") else entity.username or chat
-
-                last_info = last_fetch_times.get(chat_id, {})
-                if last_info and "last_fetch" in last_info:
-                    since = datetime.fromisoformat(last_info["last_fetch"]).astimezone(
-                        KST
-                    )
-                    print(
-                        f"↪️ Resuming fetch since: {since.strftime('%Y-%m-%d %H:%M:%S %Z')}"
-                    )
-                else:
-                    since = now - timedelta(days=self.default_fetch_days)
-                    print(
-                        f"🆕 No previous record for '{chat}'. Fetching last {self.default_fetch_days} days (since {since.strftime('%Y-%m-%d %H:%M:%S %Z')})."
-                    )
-
-                messages = []
-                offset_id = 0
-                fetch_done = False
-                while not fetch_done:
-                    history = client(
-                        GetHistoryRequest(
-                            peer=entity,
-                            limit=100,
-                            offset_id=offset_id,
-                            offset_date=None,
-                            add_offset=0,
-                            max_id=0,
-                            min_id=0,
-                            hash=0,
-                        )
-                    )
-                    if not history.messages:
-                        break
-
-                    for msg in history.messages:
-                        msg_time = msg.date.astimezone(KST)
-                        if msg_time <= since:
-                            fetch_done = True
-                            break
-                        if msg.message:
-                            messages.append(
-                                {
-                                    "channel": chat,
-                                    "time": msg_time.strftime("%Y-%m-%d %H:%M"),
-                                    "text": msg.message.strip(),
-                                }
-                            )
-
-                    if len(history.messages) < 100:
-                        break
-                    offset_id = history.messages[-1].id
-
-                messages.reverse()
-                print(f"✅ Collected {len(messages)} new messages from {chat}.")
-                if messages:
-                    all_messages.extend(messages)
-                    new_last_fetch[chat_id] = {
-                        "handle": chat_handle,
-                        "last_fetch": messages[-1]["time"],
-                    }
-                elif chat_id in last_fetch_times:
-                    prev = last_fetch_times[chat_id]
-                    new_last_fetch[chat_id] = {
-                        "handle": prev.get("handle", chat_handle),
-                        "last_fetch": prev.get("last_fetch", ""),
-                    }
-
-        all_messages.sort(key=lambda m: m["time"])
-        self._save_last_fetch_times(new_last_fetch)
-        return all_messages
+    def save_last_fetch_times(self, last_fetch: datetime):
+        data = {self.LAST_FETCH_KEY: last_fetch.isoformat()}
+        return self._save(self.last_fetch_data_filename, data)
 
 
-class ChatInfoFetcher:
-    def __init__(self, api_id: int, api_hash: str, session_name: str):
-        self.api_id = api_id
-        self.api_hash = api_hash
-        self.session_name = session_name
-        self.chats: List[Dict] = []
-        self.handle_to_id: Dict[str, str] = {}
-        self.id_to_handle: Dict[str, str] = {}
+async def run_fetch_pipeline(
+    fetch_store: FetchStore,
+    telegram_api_adapter: TelegramAPIAdapter,
+    channel_handles: List[str],
+    start: datetime,
+    end: datetime,
+) -> str:
+    try:
+        logger.debug(
+            "Running fetch pipeline: %s ~ %s", start.isoformat(), end.isoformat()
+        )
+        messages = await telegram_api_adapter.fetch_messages(channel_handles, start)
+        logger.debug("Fetched total %d messages from channels", len(messages))
+        filename = _make_messages_filename(start.isoformat(), end.isoformat())
+        message_file = fetch_store.save_messages(filename, messages)
+        fetch_store.save_last_fetch_times(end)
+        logger.debug("Saved messages to %s", message_file)
+        return message_file
+    except Exception as e:
+        raise RuntimeError(e)
 
-    def fetch_participating_chats_info(self):
-        with TelegramClient(self.session_name, self.api_id, self.api_hash) as client:
-            dialogs = client.get_dialogs()
-            result = []
-            for dialog in dialogs:
-                entity = dialog.entity
-                chat_id = str(entity.id)
-                title = getattr(entity, "title", "N/A")
-                username = getattr(entity, "username", None)
-                handle = f"@{username}" if username else None
 
-                chat_info = {
-                    "id": chat_id,
-                    "title": title,
-                    "handle": handle,
-                }
-                result.append(chat_info)
-                if handle:
-                    self.handle_to_id[handle] = chat_id
-                    self.id_to_handle[chat_id] = handle
-
-            self.chats = result
-            return result
-
-    def get_id_by_handle(self, handle: str) -> Optional[str]:
-        if not self.chats:
-            self.fetch_participating_chats_info()
-        return self.handle_to_id.get(handle)
-
-    def get_handle_by_id(self, chat_id: str) -> Optional[str]:
-        if not self.chats:
-            self.fetch_participating_chats_info()
-        return self.id_to_handle.get(chat_id)
-
-    def get_chats_info(self) -> List[Dict]:
-        if not self.chats:
-            self.fetch_participating_chats_info()
-        return self.chats
+def _make_messages_filename(start: str, end: str) -> str:
+    return f"{start}~{end}.json"

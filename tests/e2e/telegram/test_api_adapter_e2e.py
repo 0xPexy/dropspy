@@ -55,10 +55,11 @@ async def test_fetch_messages_e2e(
         for message in messages:
             assert message.validate()
             assert message.channel_handle in target_chats
+            message_time = datetime.fromisoformat(message.time)
             assert (
-                message.date > last_fetched and message.date >= prev_date
-            ), f"Date {message.date} is before than {prev_date}"
-            prev_date = message.date
+                message_time > last_fetched and message_time >= prev_date
+            ), f"Date {message.time} is before than {prev_date}"
+            prev_date = message_time
     except RuntimeError as e:
         test_e2e_logger.error(e)
         pytest.fail(str(e))
