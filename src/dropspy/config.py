@@ -43,10 +43,10 @@ DATA_DIRECTORY_ROOT = os.getenv("DATA_DIRECTORY_ROOT", "data")
 # FINAL_ANALYSIS_PROMPT_FILE_PATH = os.getenv("FINAL_ANALYSIS_PROMPT_FILE_PATH")
 
 # Internal constants for subdirectories and filenames derived from DATA_DIRECTORY_ROOT
-_CHAT_MESSAGES_SUBDIR_NAME = "chat_messages"
-_CHAT_PREBATCHES_SUBDIR_NAME = "chat_prebatches"
-_CHAT_BATCHES_SUBDIR_NAME = "chat_batches"
+_CHAT_MESSAGES_SUBDIR_NAME = "fetches"
 _FETCH_RECORD_FILENAME_ONLY = "last_fetch.json"
+_CHAT_PREBATCHES_SUBDIR_NAME = "prebatches"
+_CHAT_BATCHES_SUBDIR_NAME = "batches"
 _LOG_SUBDIR_NAME = "logs"  # Example for logs, if you add logging
 
 

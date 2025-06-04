@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+from datetime import datetime, timedelta, timezone
 import os
 import shutil
 from typing import List, Dict, Optional
@@ -15,33 +16,22 @@ from dropspy.config import (
     PATH_CHAT_PREBATCHES_DIR,
     LOGGING_CONFIG_PATH,
 )
-from dropspy.pipeline.fetch import MessageFetcher
-from dropspy.pipeline.fetch import MessageStore
+from dropspy.pipeline.fetch import FetchStore, run_fetch_pipeline
 from dropspy.pipeline.prebatch import PrebatchPipeline
 from dropspy.telegram.api_adapter import TelegramAPIAdapter
 from dropspy.telegram.types import ChannelInfo
 from dropspy.utils.logging import cleanup_logging, setup_logging
 
 
-def initialize_modules() -> (
-    tuple[TelegramAPIAdapter, MessageFetcher, MessageStore, PrebatchPipeline]
-):
+def initialize_modules() -> tuple[TelegramAPIAdapter, FetchStore, PrebatchPipeline]:
     telegram_api_adapter = TelegramAPIAdapter(
         api_id=int(TELEGRAM_API_ID),
         api_hash=TELEGRAM_API_HASH,
         session_name=TELEGRAM_SESSION_NAME,
     )
-    message_fetcher = MessageFetcher(
-        api_id=int(TELEGRAM_API_ID),
-        api_hash=TELEGRAM_API_HASH,
-        session_name=TELEGRAM_SESSION_NAME,
-        target_chats=TELEGRAM_TARGET_CHATS,
-        last_fetch_path=PATH_FETCH_RECORD_FILE,
-        default_fetch_days=TELEGRAM_DEFAULT_FETCH_DAYS,
-    )
-    message_store = MessageStore(PATH_CHAT_MESSAGES_DIR)
+    fetch_store = FetchStore(PATH_CHAT_MESSAGES_DIR)
     prebatch_pipeline = PrebatchPipeline(PATH_CHAT_PREBATCHES_DIR)
-    return telegram_api_adapter, message_fetcher, message_store, prebatch_pipeline
+    return telegram_api_adapter, fetch_store, prebatch_pipeline
 
 
 def setup_cli():
@@ -83,8 +73,7 @@ def setup_cli():
 async def execute_command(
     parser: argparse.ArgumentParser,
     telegram_api_adapter: TelegramAPIAdapter,
-    message_fetcher: MessageFetcher,
-    message_store: MessageStore,
+    fetch_store: FetchStore,
     prebatch_pipeline: PrebatchPipeline,
 ):
     args = parser.parse_args()
@@ -92,13 +81,15 @@ async def execute_command(
         await chats_command(telegram_api_adapter=telegram_api_adapter)
 
     elif args.command == "fetch":
-        fetch_command(message_fetcher=message_fetcher, message_store=message_store)
+        await fetch_command(
+            telegram_api_adapter=telegram_api_adapter, fetch_store=fetch_store
+        )
 
     elif args.command == "prebatch":
         if args.action == "list":
-            message_store.print_file_list()
+            fetch_store.print_file_list()
         else:
-            messages = message_store.get_file_by_index(args.batch_index)
+            messages = fetch_store.get_file_by_index(args.batch_index)
             prebatch_command(
                 prebatch_pipeline=prebatch_pipeline,
                 input_filename=messages["filename"],
@@ -107,7 +98,7 @@ async def execute_command(
 
     elif args.command == "batch":
         if args.action == "list":
-            message_store.print_file_list()
+            fetch_store.print_file_list()
         else:
             print("Provide an action. For now: 'list'")
 
@@ -122,16 +113,13 @@ async def main():
     telegram_api_adapter: Optional[TelegramAPIAdapter] = None
     try:
         setup_logging(LOGGING_CONFIG_PATH)
-        telegram_api_adapter, message_fetcher, message_store, prebatch_pipeline = (
-            initialize_modules()
-        )
+        telegram_api_adapter, message_store, prebatch_pipeline = initialize_modules()
         parser = setup_cli()
         await telegram_api_adapter.connect()
         await execute_command(
             parser=parser,
             telegram_api_adapter=telegram_api_adapter,
-            message_fetcher=message_fetcher,
-            message_store=message_store,
+            fetch_store=message_store,
             prebatch_pipeline=prebatch_pipeline,
         )
     except Exception as e:
@@ -159,15 +147,19 @@ def print_chats(channels: List[ChannelInfo]):
         print("-" * 40)
 
 
-def fetch_command(message_fetcher: MessageFetcher, message_store: MessageStore):
-    try:
-        msgs = message_fetcher.fetch()
-        print(f"Fetched {len(msgs)} messages.")
-        path = message_store.save(msgs)
-        print(f"Saved messages to {path}")
-    # TODO: add more specific exceptions
-    except Exception as e:
-        print(f"An error occurred: {e}")
+async def fetch_command(
+    telegram_api_adapter: TelegramAPIAdapter, fetch_store: FetchStore
+):
+    now = datetime.now(tz=timezone.utc)
+    last_fetched = now - timedelta(days=TELEGRAM_DEFAULT_FETCH_DAYS)
+    message_file_path = await run_fetch_pipeline(
+        fetch_store=fetch_store,
+        telegram_api_adapter=telegram_api_adapter,
+        channel_handles=TELEGRAM_TARGET_CHATS,
+        start=last_fetched,
+        end=now,
+    )
+    print(f"Saved messages to {message_file_path}")
 
 
 def prebatch_command(
