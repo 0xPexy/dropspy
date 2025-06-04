@@ -6,9 +6,11 @@ import os
 from dotenv import load_dotenv
 from dropspy.config import LOGGER_PREFIX
 from dropspy.telegram.api_adapter import TelegramAPIAdapter
+import pytest_asyncio
 
 E2E_TEST_ENV_FILE = ".env.test"
 LOGGER_NAME = LOGGER_PREFIX + ".tests.e2e"
+MAX_TARGET_CHATS_FOR_TEST = 3
 
 
 @pytest.fixture(scope="session")
@@ -31,18 +33,21 @@ def load_env(test_e2e_logger, pytestconfig):
         pytest.skip("Skipping e2e test: missing required environment variables")
 
 
-@pytest.fixture
-def api_adapter(pytestconfig):
-    return TelegramAPIAdapter(
+@pytest_asyncio.fixture(scope="function")
+async def api_adapter(pytestconfig):
+    adapter = TelegramAPIAdapter(
         api_id=pytestconfig.api_id,
         api_hash=pytestconfig.api_hash,
         session_name=pytestconfig.session,
     )
+    await adapter.connect()
+    yield adapter
+    await adapter.disconnect()
 
 
 @pytest.fixture
 def target_chats(pytestconfig) -> List[str]:
-    return pytestconfig.target_chats
+    return pytestconfig.target_chats[:MAX_TARGET_CHATS_FOR_TEST]
 
 
 @pytest.fixture
