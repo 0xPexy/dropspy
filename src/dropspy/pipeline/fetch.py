@@ -25,7 +25,11 @@ class FetchStore(JSONStore):
 
     def load_last_fetch_times(self) -> datetime | None:
         last_fetch_file = self._load(self.last_fetch_data_filename) or {}
-        return last_fetch_file.get(self.LAST_FETCH_KEY, None)
+        last_fetch = last_fetch_file.get(self.LAST_FETCH_KEY, None)
+        if last_fetch is None:
+            return None
+        logger.info("Last fetch time: %s", last_fetch)
+        return datetime.fromisoformat(last_fetch)
 
     def save_last_fetch_times(self, last_fetch: datetime):
         data = {self.LAST_FETCH_KEY: last_fetch.isoformat()}
