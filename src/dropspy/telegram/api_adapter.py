@@ -1,17 +1,13 @@
 import logging
-from typing import Awaitable, Callable, List, Dict, Tuple, cast
+from typing import Awaitable, Callable, List, Tuple, cast
 from datetime import datetime
 from dropspy.telegram.types import ChannelInfo, RawMessage
-from telethon.sync import TelegramClient
+from telethon import TelegramClient
 from telethon.tl.types import (
     Channel,
-    User,
-    Chat,
     Message,
 )
-from telethon.tl.types.messages import Messages
 from telethon.hints import Entity
-from telethon.tl.custom import Dialog
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +39,7 @@ class TelegramAPIAdapter:
         if self.client.is_connected():
             disconnect = cast(Callable[[], Awaitable[None]], self.client.disconnect)
             await disconnect()
+        logger.info("Disconnected from Telegram API")
 
     async def fetch_participating_channels_info(self) -> List[ChannelInfo]:
         try:
@@ -103,7 +100,7 @@ class TelegramAPIAdapter:
     ) -> List[RawMessage]:
         fetched = []
         trials = 0
-        offset_id =0
+        offset_id = 0
         while True:
             end, messages = await self._fetch_loop(
                 channel_entity=channel_entity,
@@ -112,14 +109,14 @@ class TelegramAPIAdapter:
                 limit=self.limit_per_api_call,
             )
             fetched.extend(messages)
-            offset_id = messages[-1].id
             trials += 1
             if end or trials >= self.max_api_calls:
                 break
+            offset_id = messages[-1].id
         return fetched
 
     async def _fetch_loop(
-        self, channel_entity: Channel, last_fetch: datetime, offset_id:int, limit: int
+        self, channel_entity: Channel, last_fetch: datetime, offset_id: int, limit: int
     ) -> Tuple[bool, List[RawMessage]]:
         raw_messages: List[RawMessage] = []
         async for message in self.client.iter_messages(
