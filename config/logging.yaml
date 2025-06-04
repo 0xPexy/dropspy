@@ -32,10 +32,15 @@ loggers:
     handlers: [consoleHandler]
     propagate: True
 
+  dropspy.tests.e2e:
+    level: DEBUG
+    handlers: [consoleHandler]
+    propagate: True
+
   dropspy.pipeline:
     level: INFO
     handlers: [consoleHandler]
-    propagate: False
+    propagate: True
 
   dropspy.telegram:
     level: INFO
@@ -44,8 +49,13 @@ loggers:
 
   dropspy.pipeline.batch:
     level: DEBUG
-    handlers: [consoleHandler]
-    propagate: False
+    handlers: [devConsoleHandler]
+    propagate: True
+
+  dropspy.pipeline.fetch:
+    level: DEBUG
+    handlers: [devConsoleHandler]
+    propagate: True
 
   dropspy.telegram.api_adapter:
     level: DEBUG

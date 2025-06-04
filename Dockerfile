@@ -16,9 +16,8 @@ COPY tests ./tests
 COPY pytest.ini ./
 COPY README.md ./
 
-
 RUN pip install --upgrade pip
-RUN pip install .
+RUN pip install --no-cache-dir -e .
 
 
 # CMD ["python", "src/main.py"]
