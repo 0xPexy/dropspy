@@ -48,8 +48,8 @@ class JSONStore:
         try:
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
+        # TODO: add proper error handling
         except Exception as e:
-            logger.warning(f"Failed to load file: {path} - {e}")
             return None
 
     def _make_serializable(self, obj: Any) -> Any:
