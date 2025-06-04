@@ -151,7 +151,9 @@ async def fetch_command(
     telegram_api_adapter: TelegramAPIAdapter, fetch_store: FetchStore
 ):
     now = datetime.now(tz=timezone.utc)
-    last_fetched = now - timedelta(days=TELEGRAM_DEFAULT_FETCH_DAYS)
+    last_fetched = fetch_store.load_last_fetch_times() or now - timedelta(
+        days=TELEGRAM_DEFAULT_FETCH_DAYS
+    )
     message_file_path = await run_fetch_pipeline(
         fetch_store=fetch_store,
         telegram_api_adapter=telegram_api_adapter,

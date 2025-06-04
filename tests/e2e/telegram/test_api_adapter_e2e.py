@@ -29,7 +29,6 @@ async def test_fetch_messages_e2e(
     if len(target_chats) == 0:
         pytest.skip("Skipping fetch_channel_messages test: no target chats specified")
 
-    await api_adapter.connect()
     last_fetched = datetime.now(tz=timezone.utc) - timedelta(days=days_interval)
     messages = await api_adapter.fetch_messages(
         channel_handles=target_chats, last_fetch=last_fetched
