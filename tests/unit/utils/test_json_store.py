@@ -48,9 +48,19 @@ def test_get_file_by_index(file_store):
 def test_save_and_load(file_store):
     data = {"key": "value"}
     filename = "test.json"
-    file_store.save(filename, data)
+    file_store._save(filename, data)
 
     assert (file_store.data_dir / filename).exists()
 
-    loaded_data = file_store.load(filename)
+    loaded_data = file_store._load(filename)
+    assert loaded_data == data
+
+def test_save_load_list(file_store):
+    data = [{"key1": "value1"}, {"key2": "value2"}]
+    filename = "test.json"
+    file_store._save(filename, data)
+
+    assert (file_store.data_dir / filename).exists()
+
+    loaded_data = file_store._load(filename)
     assert loaded_data == data
