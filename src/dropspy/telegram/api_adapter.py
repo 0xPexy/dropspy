@@ -1,3 +1,4 @@
+import logging
 from typing import Awaitable, Callable, List, Dict, Tuple, cast
 from datetime import datetime
 from dropspy.telegram.types import ChannelInfo, RawMessage
@@ -11,6 +12,8 @@ from telethon.tl.types import (
 from telethon.tl.types.messages import Messages
 from telethon.hints import Entity
 from telethon.tl.custom import Dialog
+
+logger = logging.getLogger(__name__)
 
 
 class TelegramAPIAdapter:
@@ -33,6 +36,7 @@ class TelegramAPIAdapter:
             await self.client.connect()
         if not await self.client.is_user_authorized():
             raise RuntimeError("User not authorized.")
+        logger.info("Connected to Telegram API and authorized successfully")
         return self
 
     async def disconnect(self):
@@ -72,9 +76,18 @@ class TelegramAPIAdapter:
             for entity in entities:
                 if not isinstance(entity, Channel):
                     continue
+                logger.debug(
+                    "Fetching messages from [%s](@%s)", entity.title, entity.username
+                )
                 messages = await self._fetch_messages(entity, last_fetch)
+                logger.debug(
+                    "Fetched %d messages from [%s](@%s)",
+                    len(messages),
+                    entity.title,
+                    entity.username,
+                )
                 fetched.extend(messages)
-            fetched.sort(key=lambda msg: msg.date)
+            fetched.sort(key=lambda msg: msg.time)
             return fetched
         except Exception as e:
             raise RuntimeError(e)
@@ -90,24 +103,27 @@ class TelegramAPIAdapter:
     ) -> List[RawMessage]:
         fetched = []
         trials = 0
+        offset_id =0
         while True:
             end, messages = await self._fetch_loop(
                 channel_entity=channel_entity,
                 last_fetch=last_fetch,
+                offset_id=offset_id,
                 limit=self.limit_per_api_call,
             )
             fetched.extend(messages)
+            offset_id = messages[-1].id
             trials += 1
             if end or trials >= self.max_api_calls:
                 break
         return fetched
 
     async def _fetch_loop(
-        self, channel_entity: Channel, last_fetch: datetime, limit: int
+        self, channel_entity: Channel, last_fetch: datetime, offset_id:int, limit: int
     ) -> Tuple[bool, List[RawMessage]]:
         raw_messages: List[RawMessage] = []
         async for message in self.client.iter_messages(
-            entity=channel_entity, limit=limit
+            entity=channel_entity, offset_id=offset_id, limit=limit
         ):
             if not isinstance(message, Message) or message.date is None:
                 continue
@@ -117,7 +133,7 @@ class TelegramAPIAdapter:
                 id=message.id,
                 channel_id=channel_entity.id,
                 channel_handle=self._format_handle(channel_entity.username),
-                date=message.date,
+                time=message.date.isoformat(),
                 text=message.message.strip(),
             )
             raw_messages.append(raw_message)

@@ -25,7 +25,7 @@ class RawMessage:
     id: int
     channel_id: int
     channel_handle: str
-    date: datetime
+    time: str
     text: str
 
     def validate(self) -> bool:
@@ -33,14 +33,15 @@ class RawMessage:
             assert isinstance(self.id, int)
             assert isinstance(self.channel_id, int)
             assert isinstance(self.channel_handle, str)
-            assert isinstance(self.date, datetime)
+            assert isinstance(self.time, str)
+            datetime.fromisoformat(self.time)
             assert isinstance(self.text, str)
             return True
         except (AssertionError, ValueError):
             return False
 
-    def to_json(self) -> str:
-        return json.dumps(asdict(self), ensure_ascii=False)
+    def to_json(self) -> dict:
+        return asdict(self)
 
     @classmethod
     def from_json(cls, data: str) -> RawMessage:
