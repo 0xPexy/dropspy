@@ -65,3 +65,10 @@ PATH_LOG_DIR = get_data_path(_LOG_SUBDIR_NAME)  # Example for logs
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 LOGGING_CONFIG_PATH = "./config/logging.yaml"
 LOGGER_PREFIX = "dropspy"
+APP_ENV = os.getenv("APP_ENV", "production").lower()
+
+# --- Logging File Configuration ---
+LOG_FILE_NAME = "dropspy.log"
+_LOG_SUBDIR_NAME = "logs"
+
+PATH_LOG_DIR = get_data_path(_LOG_SUBDIR_NAME)  # Example for logs

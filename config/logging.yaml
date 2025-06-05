@@ -15,6 +15,13 @@ handlers:
     formatter: defaultFormatter
     stream: ext://sys.stdout
 
+  fileHandler:
+    class: logging.FileHandler
+    level: INFO
+    formatter: defaultFormatter
+    filename: placeholder.log
+    encoding: utf-8
+
   devConsoleHandler:
     class: logging.StreamHandler
     level: DEBUG
@@ -24,42 +31,34 @@ handlers:
 loggers:
   dropspy:
     level: INFO
-    handlers: [consoleHandler]
     propagate: True
 
   dropspy.tests:
     level: DEBUG
-    handlers: [consoleHandler]
     propagate: True
 
   dropspy.tests.e2e:
     level: DEBUG
-    handlers: [consoleHandler]
     propagate: True
 
   dropspy.pipeline:
-    level: INFO
-    handlers: [consoleHandler]
+    level: DEBUG
     propagate: True
 
   dropspy.telegram:
-    level: INFO
-    handlers: [consoleHandler]
+    level: DEBUG
     propagate: True
 
   dropspy.pipeline.batch:
     level: DEBUG
-    handlers: [devConsoleHandler]
     propagate: True
 
   dropspy.pipeline.fetch:
     level: DEBUG
-    handlers: [devConsoleHandler]
     propagate: True
 
   dropspy.telegram.api_adapter:
     level: DEBUG
-    handlers: [devConsoleHandler]
     propagate: True
 
 disable_existing_loggers: False

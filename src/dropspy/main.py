@@ -15,6 +15,7 @@ from dropspy.config import (
     PATH_CHAT_MESSAGES_DIR,
     PATH_CHAT_PREBATCHES_DIR,
     LOGGING_CONFIG_PATH,
+    APP_ENV,
 )
 from dropspy.pipeline.fetch import FetchStore, run_fetch_pipeline
 from dropspy.pipeline.prebatch import PrebatchPipeline
