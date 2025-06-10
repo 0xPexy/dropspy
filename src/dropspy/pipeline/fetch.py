@@ -35,6 +35,10 @@ class FetchStore(JSONStore):
         data = {self.LAST_FETCH_KEY: last_fetch.isoformat()}
         return self._save(self.last_fetch_data_filename, data)
 
+    def get_filenames(self):
+        files = [f for f in self._list_files() if f != self.last_fetch_data_filename]
+        return files
+
 
 async def run_fetch_pipeline(
     fetch_store: FetchStore,

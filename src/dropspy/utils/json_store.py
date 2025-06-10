@@ -13,18 +13,13 @@ class JSONStore:
         self.data_dir = data_dir
         os.makedirs(self.data_dir, exist_ok=True)
 
-    def list_files(self):
+    def _list_files(self):
         files = [f for f in os.listdir(self.data_dir) if f.endswith(".json")]
         files.sort()
         return files
 
-    def print_file_list(self):
-        files = self.list_files()
-        for idx, fname in enumerate(files):
-            print(f"{idx}: {fname}")
-
     def get_file_by_index(self, idx: int) -> Dict[str, Any]:
-        files = self.list_files()
+        files = self._list_files()
         if idx < 0 or idx >= len(files):
             raise IndexError("Invalid file index")
         filename = files[idx]

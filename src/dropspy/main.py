@@ -88,7 +88,9 @@ async def execute_command(
 
     elif args.command == "prebatch":
         if args.action == "list":
-            fetch_store.print_file_list()
+            fetches = fetch_store.get_filenames()
+            for i, filename in enumerate(fetches):
+                print(f"{i}: {filename}")
         else:
             messages = fetch_store.get_file_by_index(args.batch_index)
             prebatch_command(
@@ -99,7 +101,8 @@ async def execute_command(
 
     elif args.command == "batch":
         if args.action == "list":
-            fetch_store.print_file_list()
+            # TODO: implement with prebatchstore
+            print("Not implemented yet")
         else:
             print("Provide an action. For now: 'list'")
 
