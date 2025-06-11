@@ -17,7 +17,7 @@ def test_prebatch_pipeline_dedup(tmp_path, test_messages):
     input_filename = tmp_path / "input.json"
     output_dir = tmp_path / "out"
     pipeline = PrebatchPipeline(str(output_dir))
-    out_path = pipeline.run(str(input_filename), test_messages)
+    out_path = pipeline.run_prebatch_pipeline(str(input_filename), test_messages)
 
     with open(out_path, "r", encoding="utf-8") as f:
         result = json.load(f)
@@ -35,7 +35,7 @@ def test_prebatch_pipeline_no_duplicates(tmp_path):
     input_filename = tmp_path / "input.json"
     output_dir = tmp_path / "out"
     pipeline = PrebatchPipeline(str(output_dir))
-    out_path = pipeline.run(str(input_filename), messages)
+    out_path = pipeline.run_prebatch_pipeline(str(input_filename), messages)
     with open(out_path, "r", encoding="utf-8") as f:
         result = json.load(f)
     assert len(result) == 2

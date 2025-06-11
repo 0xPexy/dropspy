@@ -42,7 +42,7 @@ class PrebatchPipeline:
         self.prebatchStore = PrebatchStore(output_dir=output_dir)
         self.prebatcher = Prebatcher()
 
-    def run(self, input_filename: str, fetched_messages: Dict) -> str:
+    def run_prebatch_pipeline(self, input_filename: str, fetched_messages: Dict) -> str:
         try:
             unique_messages = self.prebatcher.prebatch(
                 fetched_messages=fetched_messages
@@ -51,3 +51,4 @@ class PrebatchPipeline:
             return out_path
         except Exception as e:
             raise RuntimeError(f"Error in prebatch pipeline: {e}")
+

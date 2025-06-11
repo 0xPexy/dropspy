@@ -173,7 +173,9 @@ def prebatch_command(
 ):
     try:
         print(f"Pre-batching file: {input_filename}")
-        out_path = prebatch_pipeline.run(input_filename, fetched_messages)
+        out_path = prebatch_pipeline.run_prebatch_pipeline(
+            input_filename, fetched_messages
+        )
         print(f"Pre-batched file saved to {out_path}")
     except Exception as e:
         print(f"An error occurred: {e}")
