@@ -15,6 +15,11 @@ class PrebatchStore(JSONStore):
             return self._save(Path(input_filename).name, prebatched_messages)
         except Exception as e:
             raise RuntimeError(f"Failed to store prebatced messages: {e}")
+    
+    # TODO: show with user defined timezone
+    def get_filenames(self):
+        files = self._list_files()
+        return files
 
 
 class Prebatcher:

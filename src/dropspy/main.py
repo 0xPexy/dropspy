@@ -21,6 +21,7 @@ from dropspy.pipeline.fetch import FetchStore, run_fetch_pipeline
 from dropspy.pipeline.prebatch import PrebatchPipeline
 from dropspy.telegram.api_adapter import TelegramAPIAdapter
 from dropspy.telegram.types import ChannelInfo
+from dropspy.utils.formatting import print_filename_with_index
 from dropspy.utils.logging import cleanup_logging, setup_logging
 
 
@@ -89,8 +90,7 @@ async def execute_command(
     elif args.command == "prebatch":
         if args.action == "list":
             fetches = fetch_store.get_filenames()
-            for i, filename in enumerate(fetches):
-                print(f"{i}: {filename}")
+            print_filename_with_index(fetches)
         else:
             messages = fetch_store.get_file_by_index(args.batch_index)
             prebatch_command(
@@ -101,8 +101,8 @@ async def execute_command(
 
     elif args.command == "batch":
         if args.action == "list":
-            # TODO: implement with prebatchstore
-            print("Not implemented yet")
+            prebatches = prebatch_pipeline.prebatchStore.get_filenames()
+            print_filename_with_index(prebatches)
         else:
             print("Provide an action. For now: 'list'")
 
@@ -117,13 +117,13 @@ async def main():
     telegram_api_adapter: Optional[TelegramAPIAdapter] = None
     try:
         setup_logging(LOGGING_CONFIG_PATH)
-        telegram_api_adapter, message_store, prebatch_pipeline = initialize_modules()
+        telegram_api_adapter, fetch_store, prebatch_pipeline = initialize_modules()
         parser = setup_cli()
         await telegram_api_adapter.connect()
         await execute_command(
             parser=parser,
             telegram_api_adapter=telegram_api_adapter,
-            fetch_store=message_store,
+            fetch_store=fetch_store,
             prebatch_pipeline=prebatch_pipeline,
         )
     except Exception as e:
